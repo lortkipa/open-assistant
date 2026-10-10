@@ -16,6 +16,9 @@ const messages: Record<string, string> = {
   invalid_name: 'Enter a name up to 50 characters.',
   google_failed: 'Google sign-in didn’t complete. Please try again.',
   google_not_configured: 'Google sign-in isn’t set up on this server yet.',
+  ai_not_configured: 'AI replies aren’t set up on this server yet.',
+  ai_failed: 'The agent couldn’t reply. Please try again.',
+  too_large: 'This chat is too long for the agent to read.',
 }
 
 export function errorMessage(data: any): string {

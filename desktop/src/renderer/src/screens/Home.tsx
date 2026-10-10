@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
-import type { User } from '../api'
+import { api, errorMessage, type User } from '../api'
 import { Sidebar } from '../components/Sidebar'
 import { Composer } from '../components/Composer'
 import { Chat } from '../components/Chat'
 import { NewAgentDialog } from '../components/NewAgentDialog'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { fakeReply, type Agent, type Message } from '../agents'
+import type { Agent, Message } from '../agents'
 import { UploadIcon } from '../components/icons'
 
 // 20 keeps every image under Claude's full-size limit (stricter past 20); 25 MB keeps requests sane.
@@ -26,7 +26,7 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const editing = agents.find((a) => a.id === editingId)
   const deleting = agents.find((a) => a.id === deletingId)
-  // Read from the reply timer, which outlives the render that started it.
+  // Read from reply loops, which outlive the render that started them.
   const selectedRef = useRef(selectedId)
   selectedRef.current = selectedId
 
@@ -40,34 +40,74 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
   }
 
   const remove = (id: string) => {
+    cancelReply(id)
     setAgents((prev) => prev.filter((a) => a.id !== id))
-    setSent(({ [id]: _, ...rest }) => rest)
     if (selectedId === id) setSelectedId(null)
   }
-  // Messages sent this session, per agent.
-  const [sent, setSent] = useState<Record<string, Message[]>>({})
-  // Agents currently "typing" a fake reply.
+  // Agents currently searching or typing a reply.
   const [typing, setTyping] = useState<Set<string>>(new Set())
+  // Each agent's reply in progress, by the id of its current request. Writing again cancels it.
+  const replies = useRef(new Map<string, string>())
+
+  const setTypingFor = (id: string, on: boolean) =>
+    setTyping((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
 
   const append = (id: string, message: Message) =>
-    setSent((prev) => ({ ...prev, [id]: [...(prev[id] ?? []), message] }))
+    setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, messages: [...a.messages, message] } : a)))
+
+  const cancelReply = (id: string) => {
+    const requestId = replies.current.get(id)
+    if (!requestId) return
+    replies.current.delete(id)
+    api.abort(requestId)
+  }
+
+  // Stop all replies when signing out.
+  useEffect(() => {
+    const inProgress = replies.current
+    return () => [...inProgress.keys()].forEach(cancelReply)
+  }, [])
+
+  // The agent reads the whole chat and sends messages one API call at a time, until it says it's done
+  // (or chooses to say nothing). A newer reply for the same agent makes this one drop out unseen.
+  const reply = async (id: string, name: string, transcript: Message[]) => {
+    cancelReply(id)
+    setTypingFor(id, true)
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    while (true) {
+      const requestId = crypto.randomUUID()
+      replies.current.set(id, requestId)
+      const messages = transcript.map(({ from, text }) => ({ from, text }))
+      const { status, data } = await api.request('POST', '/agents/reply', { agent: { name }, timeZone, messages }, requestId)
+      if (replies.current.get(id) !== requestId) return
+      if (status !== 200) {
+        setNotice({ text: errorMessage(data) })
+        break
+      }
+      if (data.message) {
+        const message: Message = { from: 'agent', text: data.message, time: now() }
+        transcript = [...transcript, message]
+        append(id, message)
+        // A reply to an agent you've since left marks it unread.
+        if (selectedRef.current !== id) update(id, { unread: true })
+      }
+      if (!data.message || !data.more) break
+    }
+    replies.current.delete(id)
+    setTypingFor(id, false)
+  }
 
   const send = (text: string, attached: File[]) => {
     if (!agent) return
-    const id = agent.id
     const names = attached.map((file) => `📎 ${file.name}`).join('\n')
-    append(id, { from: 'user', text: [text, names].filter(Boolean).join('\n\n'), time: now() })
-    setTyping((prev) => new Set(prev).add(id))
-    setTimeout(() => {
-      append(id, { from: 'agent', text: fakeReply(text), time: now() })
-      // A reply to an agent you've since left marks it unread.
-      if (selectedRef.current !== id) update(id, { unread: true })
-      setTyping((prev) => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
-    }, 1200 + Math.random() * 800)
+    const message: Message = { from: 'user', text: [text, names].filter(Boolean).join('\n\n'), time: now() }
+    append(agent.id, message)
+    reply(agent.id, agent.name, [...agent.messages, message])
   }
   // An object, so the same message shown again restarts its timer.
   const [notice, setNotice] = useState<{ text: string } | null>(null)
@@ -182,7 +222,7 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
             <Chat
               key={agent.id}
               agent={agent}
-              messages={[...agent.messages, ...(sent[agent.id] ?? [])]}
+              messages={agent.messages}
               typing={typing.has(agent.id)}
             />
           )}
@@ -197,7 +237,6 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
             }}
             notice={notice?.text}
             placeholder={agent && `Message ${agent.name}`}
-            // Only the fake chats answer, with canned replies.
             onSubmit={(text, attached) => {
               setNotice(null)
               setFiles([])

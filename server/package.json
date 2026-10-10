@@ -12,6 +12,7 @@
     "google-auth-library": "^11.2.0",
     "hono": "^4.13.13",
     "nodemailer": "^10.0.16",
+    "openai": "^7.31.0",
     "postgres": "^3.4.9",
     "zod": "^4.6.5"
   },

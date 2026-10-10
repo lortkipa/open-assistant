@@ -3,7 +3,7 @@ import { clearToken, getToken, setToken } from './session'
 export const API_URL = (import.meta.env.MAIN_VITE_API_URL || 'http://localhost:8787').replace(/\/$/, '')
 
 // All server calls go through the main process so the renderer never sees the session token.
-export async function request(method: string, path: string, body?: unknown) {
+export async function request(method: string, path: string, body?: unknown, signal?: AbortSignal) {
   const token = getToken()
   let res: Response
   try {
@@ -14,11 +14,12 @@ export async function request(method: string, path: string, body?: unknown) {
         ...(token && { authorization: `Bearer ${token}` }),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
     })
   } catch {
-    return { status: 0, data: { error: 'network' } }
+    return { status: 0, data: { error: signal?.aborted ? 'aborted' : 'network' } }
   }
-  const data = await res.json().catch(() => ({}))
+  const data = await res.json().catch(() => (signal?.aborted ? { error: 'aborted' } : {}))
 
   if (typeof data?.token === 'string') {
     setToken(data.token)
