@@ -1,0 +1,37 @@
+name: open-assistant-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: open_assistant
+      POSTGRES_PASSWORD: open_assistant
+      POSTGRES_DB: open_assistant
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U open_assistant"]
+      interval: 3s
+      retries: 20
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    env_file: server/.env
+    environment:
+      DATABASE_URL: postgres://open_assistant:open_assistant@postgres:5432/open_assistant
+      PORT: "8787"
+    ports:
+      - "127.0.0.1:8787:8787"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: ["server"]
+
+volumes:
+  pgdata:

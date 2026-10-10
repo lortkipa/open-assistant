@@ -1,0 +1,27 @@
+appId: dev.openassistant.desktop
+productName: Open Assistant
+directories:
+  buildResources: resources
+  output: release
+files:
+  - out/**
+  - package.json
+  - resources/icon.png
+icon: resources/icon.png
+protocols:
+  - name: Open Assistant
+    schemes: [openassistant]
+linux:
+  target: [AppImage, deb]
+  category: Utility
+  maintainer: Open Assistant
+  executableName: open-assistant
+  syncDesktopName: true
+mac:
+  target: [dmg]
+  category: public.app-category.productivity
+win:
+  target: [nsis]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
