@@ -3,7 +3,8 @@ import type { User } from '../api'
 import { Sidebar } from '../components/Sidebar'
 import { Composer } from '../components/Composer'
 import { Chat } from '../components/Chat'
-import { AGENTS, fakeReply, type Message } from '../agents'
+import { NewAgentDialog } from '../components/NewAgentDialog'
+import { fakeReply, type Agent, type Message } from '../agents'
 import { UploadIcon } from '../components/icons'
 
 // 20 keeps every image under Claude's full-size limit (stricter past 20); 25 MB keeps requests sane.
@@ -15,9 +16,12 @@ const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files')
 export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => void }) {
   const [files, setFiles] = useState<File[]>([])
   const [dropping, setDropping] = useState(false)
+  // Agents live only in memory until there is a server side for them.
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [creating, setCreating] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const agent = AGENTS.find((a) => a.id === selectedId)
-  // Messages sent this session, per agent, on top of the sample thread.
+  const agent = agents.find((a) => a.id === selectedId)
+  // Messages sent this session, per agent.
   const [sent, setSent] = useState<Record<string, Message[]>>({})
   // Agents currently "typing" a fake reply.
   const [typing, setTyping] = useState<Set<string>>(new Set())
@@ -105,10 +109,22 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
       <Sidebar
         user={user}
         onSignedOut={onSignedOut}
-        agents={AGENTS}
+        agents={agents}
         selectedId={selectedId}
         onSelect={setSelectedId}
+        onNew={() => setCreating(true)}
       />
+      {creating && (
+        <NewAgentDialog
+          onClose={() => setCreating(false)}
+          onCreate={({ name, shape }) => {
+            const id = crypto.randomUUID()
+            setAgents((prev) => [...prev, { id, name, shape, messages: [] }])
+            setSelectedId(id)
+            setCreating(false)
+          }}
+        />
+      )}
       <main className="main" onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
         <div className="main-body">
           {agent && (

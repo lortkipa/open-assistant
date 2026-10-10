@@ -34,9 +34,10 @@ type Props = {
   agents: Agent[]
   selectedId: string | null
   onSelect: (id: string | null) => void
+  onNew: () => void
 }
 
-export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect }: Props) {
+export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew }: Props) {
   const [layout, setLayout] = useState(loadLayout)
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = useCallback(() => setMenuOpen(false), [])
@@ -111,7 +112,7 @@ export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect }: Pro
         <button className="icon-btn" aria-label="Search" title="Search">
           <SearchIcon />
         </button>
-        <button className="icon-btn" aria-label="New" title="New" onClick={() => onSelect(null)}>
+        <button className="icon-btn" aria-label="New agent" title="New agent" onClick={onNew}>
           <PlusIcon />
         </button>
       </div>

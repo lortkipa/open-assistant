@@ -907,6 +907,191 @@ body.resizing .sidebar-handle::after {
   }
 }
 
+/* New agent dialog */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  animation: fade 0.12s ease-out;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.dialog-title {
+  margin: 0;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* Character choices in the picker; the picked one is darkened. */
+.icon-choice {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.icon-choice .agent-icon {
+  position: relative;
+  /* Experiment: unpicked at full size and color. Was opacity 0.5, saturate(0.5), scale(0.82). */
+  transition: opacity 0.15s, filter 0.15s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.icon-choice:hover .agent-icon {
+  transform: scale(1.08);
+}
+
+.icon-choice[aria-pressed='true'] .agent-icon {
+  opacity: 1;
+  filter: brightness(0.55) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+}
+
+.icon-choice:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* The big character; hover shows a pen, click opens the picker below it. */
+.avatar-area {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 8px;
+}
+
+.avatar-edit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 128px;
+  height: 128px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.avatar-edit .agent-icon {
+  animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: filter 0.15s;
+}
+
+.avatar-edit-overlay {
+  position: absolute;
+  inset: 12px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  /* No backdrop: a shadow keeps the pen readable on any character. */
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.avatar-edit:hover .avatar-edit-overlay,
+.avatar-edit:focus-visible .avatar-edit-overlay {
+  opacity: 1;
+}
+
+/* Darken the character itself, not a box around it. */
+.avatar-edit:hover .agent-icon,
+.avatar-edit:focus-visible .agent-icon {
+  filter: brightness(0.55);
+}
+
+.avatar-edit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -6px;
+}
+
+/* Floats over the name field while open. */
+.icon-picker {
+  position: absolute;
+  top: calc(100% - 4px);
+  left: -8px;
+  right: -8px;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  animation: menu-in 0.12s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.6);
+  }
+}
+
+/* A filled pill, matching the buttons below it. */
+.name-field {
+  width: 100%;
+  height: 46px;
+  padding: 0 20px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 550;
+  text-align: center;
+  color: var(--text);
+  background: var(--surface-hover);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.name-field::placeholder {
+  color: var(--faint);
+  font-weight: 450;
+}
+
+.name-field:hover {
+  background: #1d1d20;
+}
+
+.name-field:focus {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Split the row evenly, pill-shaped. */
+.dialog-actions > .btn {
+  flex: 1 1 0;
+  border-radius: 999px;
+}
+
 /* Composer */
 
 .composer {

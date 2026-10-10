@@ -16,6 +16,8 @@ const IMAGES = { blob, bean, square, pill, crescent, pear, plus, diamond, egg, p
 
 export type Shape = keyof typeof IMAGES
 
+export const SHAPES = Object.keys(IMAGES) as Shape[]
+
 export function AgentIcon({ shape, size = 28 }: { shape: Shape; size?: number }) {
   return (
     <img

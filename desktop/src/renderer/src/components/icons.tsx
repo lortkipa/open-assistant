@@ -103,3 +103,10 @@ export const LogOutIcon = ({ size }: { size?: number }) => (
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
   </Icon>
 )
+
+export const PencilIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-4-4L4 16v4Z" />
+    <path d="m13.5 6.5 4 4" />
+  </Icon>
+)
