@@ -7,7 +7,7 @@ import { scheduleTimers } from './agents/runner.ts'
 import { MAX_ATTACHMENT_SIZE, startSweeping } from './agents/attachments.ts'
 import { agents } from './routes/agents.ts'
 import { auth } from './routes/auth.ts'
-import { me } from './routes/me.ts'
+import { MAX_AVATAR_SIZE, me } from './routes/me.ts'
 
 await migrate()
 // Timers that ran out while the server was down finish right away.
@@ -22,7 +22,15 @@ const smallBody = bodyLimit({ maxSize: 16 * 1024, onError: tooLarge })
 const chatBody = bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge })
 // One attached file, plus room for the multipart wrapping.
 const uploadBody = bodyLimit({ maxSize: MAX_ATTACHMENT_SIZE + 64 * 1024, onError: tooLarge })
-const limitFor = (path: string) => (path === '/agents/attachments' ? uploadBody : path.startsWith('/agents/') ? chatBody : smallBody)
+const avatarBody = bodyLimit({ maxSize: MAX_AVATAR_SIZE + 64 * 1024, onError: tooLarge })
+const limitFor = (path: string) =>
+  path === '/agents/attachments'
+    ? uploadBody
+    : path === '/me/avatar'
+      ? avatarBody
+      : path.startsWith('/agents/')
+        ? chatBody
+        : smallBody
 app.use((c, next) => limitFor(c.req.path)(c, next))
 app.get('/health', (c) => c.json({ ok: true }))
 app.route('/auth', auth)

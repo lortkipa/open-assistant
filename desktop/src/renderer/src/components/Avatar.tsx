@@ -1,18 +1,23 @@
 import { useState } from 'react'
 
-// Google photo when there is one, otherwise a neutral head-and-shoulders silhouette.
+// A photo uploaded in Settings is stored on the server; the main process serves it with the session token.
+const UPLOADED = '/me/avatar/'
+const srcFor = (url: string) => (url.startsWith(UPLOADED) ? `oa-avatar://${url.slice(UPLOADED.length)}` : url)
+
+// The user's photo (uploaded or from Google) when there is one, otherwise a neutral head-and-shoulders silhouette.
 export function Avatar({ url, size = 96 }: { url: string | null; size?: number }) {
-  const [failed, setFailed] = useState(false)
-  if (url && !failed) {
+  // Remembered per photo, so a new one gets its own chance to load.
+  const [failed, setFailed] = useState<string | null>(null)
+  if (url && failed !== url) {
     return (
       <img
         className="avatar"
-        src={url}
+        src={srcFor(url)}
         width={size}
         height={size}
         alt=""
         referrerPolicy="no-referrer"
-        onError={() => setFailed(true)}
+        onError={() => setFailed(url)}
       />
     )
   }

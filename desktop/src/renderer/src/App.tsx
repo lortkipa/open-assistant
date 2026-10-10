@@ -55,6 +55,6 @@ export function App() {
         />
       )
     case 'home':
-      return <Home user={screen.user} onSignedOut={signOut} />
+      return <Home user={screen.user} onUserChange={(user) => setScreen({ name: 'home', user })} onSignedOut={signOut} />
   }
 }

@@ -5,8 +5,10 @@ import { ChevronRightIcon, GaugeIcon, HelpIcon, InfoIcon, LogOutIcon, MessageIco
 // Placeholder until usage is tracked.
 const WEEKLY_USAGE = 44
 
-// Pops up above the profile button. Only "Log out" does anything yet.
-export function AccountMenu({ onClose, onSignedOut }: { onClose: () => void; onSignedOut: () => void }) {
+type Props = { onClose: () => void; onSignedOut: () => void; onSettings: () => void }
+
+// Pops up above the profile button. Support and usage are placeholders for now.
+export function AccountMenu({ onClose, onSignedOut, onSettings }: Props) {
   const [supportOpen, setSupportOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -77,7 +79,7 @@ export function AccountMenu({ onClose, onSignedOut }: { onClose: () => void; onS
           </div>
         )}
       </div>
-      <button className="menu-item" role="menuitem">
+      <button className="menu-item" role="menuitem" onClick={onSettings}>
         <SettingsIcon size={18} />
         <span>Settings</span>
       </button>

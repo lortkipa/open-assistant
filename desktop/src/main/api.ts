@@ -32,15 +32,15 @@ export async function request(method: string, path: string, body?: unknown) {
   return { status: res.status, data }
 }
 
-// One attached file, as multipart. Uploaded right after it's attached; a message claims it later.
-export async function upload(name: string, type: string, bytes: ArrayBuffer) {
+// One file, as multipart, to `path`.
+async function uploadFile(method: string, path: string, name: string, type: string, bytes: ArrayBuffer) {
   const token = getToken()
   const form = new FormData()
   form.append('file', new File([bytes], name, { type }))
   let res: Response
   try {
-    res = await fetch(`${API_URL}/agents/attachments`, {
-      method: 'POST',
+    res = await fetch(API_URL + path, {
+      method,
       headers: token ? { authorization: `Bearer ${token}` } : {},
       body: form,
     })
@@ -51,10 +51,25 @@ export async function upload(name: string, type: string, bytes: ArrayBuffer) {
   return { status: res.status, data: await res.json().catch(() => ({})) }
 }
 
+// One attached file. Uploaded right after it's attached; a message claims it later.
+export const upload = (name: string, type: string, bytes: ArrayBuffer) =>
+  uploadFile('POST', '/agents/attachments', name, type, bytes)
+
+// A new profile photo, replacing the old one.
+export const uploadAvatar = (type: string, bytes: ArrayBuffer) => uploadFile('PUT', '/me/avatar', 'avatar', type, bytes)
+
 // An attachment's bytes, straight from the server.
 export async function fetchAttachment(id: string) {
   const token = getToken()
   return fetch(`${API_URL}/agents/attachments/${encodeURIComponent(id)}`, {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  })
+}
+
+// A profile photo's bytes, straight from the server.
+export async function fetchAvatar(id: string) {
+  const token = getToken()
+  return fetch(`${API_URL}/me/avatar/${encodeURIComponent(id)}`, {
     headers: token ? { authorization: `Bearer ${token}` } : {},
   })
 }

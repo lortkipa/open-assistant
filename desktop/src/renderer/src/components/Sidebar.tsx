@@ -39,9 +39,10 @@ type Props = {
   onUpdate: (id: string, changes: Partial<Agent>) => void
   onEdit: (id: string) => void
   onDelete: (id: string) => void
+  onSettings: () => void
 }
 
-export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew, onUpdate, onEdit, onDelete }: Props) {
+export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew, onUpdate, onEdit, onDelete, onSettings }: Props) {
   const [layout, setLayout] = useState(loadLayout)
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = useCallback(() => setMenuOpen(false), [])
@@ -172,7 +173,16 @@ export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew
         />
       )}
 
-      {menuOpen && <AccountMenu onClose={closeMenu} onSignedOut={onSignedOut} />}
+      {menuOpen && (
+        <AccountMenu
+          onClose={closeMenu}
+          onSignedOut={onSignedOut}
+          onSettings={() => {
+            closeMenu()
+            onSettings()
+          }}
+        />
+      )}
       <button
         className={`sidebar-profile${menuOpen ? ' active' : ''}`}
         aria-haspopup="menu"

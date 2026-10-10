@@ -4,6 +4,8 @@ export type DesktopApi = {
   request: <T = any>(method: string, path: string, body?: unknown) => Promise<ApiResult<T>>
   // Uploads one attached file; data.attachment is { id, name, type, size }.
   upload: (name: string, type: string, bytes: ArrayBuffer) => Promise<ApiResult>
+  // Replaces the profile photo; data.user is the updated user.
+  uploadAvatar: (type: string, bytes: ArrayBuffer) => Promise<ApiResult>
   readAttachment: (id: string) => Promise<ArrayBuffer | null>
   // Opens a document in the app the system uses for it. False if it couldn't.
   openAttachment: (id: string, name: string) => Promise<boolean>

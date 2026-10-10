@@ -92,12 +92,14 @@ auth.post('/google', async (c) => {
   }
 
   // Match by Google account first, then link an existing email account, else create one.
+  // A photo uploaded in Settings stays; otherwise the Google photo is kept up to date.
   const [user] = await sql<User[]>`
     insert into users (email, google_sub, avatar_url)
     values (${profile.email}, ${profile.sub}, ${profile.picture})
     on conflict (email) do update set
       google_sub = excluded.google_sub,
-      avatar_url = case when users.google_sub is null and users.avatar_url is not null
+      avatar_url = case when users.avatar_url like '/me/avatar/%'
+                          or (users.google_sub is null and users.avatar_url is not null)
                         then users.avatar_url else excluded.avatar_url end
     returning id, email, name, avatar_url`
   return c.json({ token: await createSession(user.id), user, suggestedName: profile.name })

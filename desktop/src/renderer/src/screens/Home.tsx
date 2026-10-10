@@ -6,6 +6,7 @@ import { flatten, ImageEditor, type Mark } from '../components/ImageEditor'
 import { Chat, type TimerControl } from '../components/Chat'
 import { NewAgentDialog } from '../components/NewAgentDialog'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { SettingsDialog } from '../components/SettingsDialog'
 import { fromWire, isImage, type Agent, type Attachment, type Message, type WireTimer } from '../agents'
 import { UploadIcon } from '../components/icons'
 
@@ -38,7 +39,9 @@ const fromWireAgent = ({ messages = [], timers = [], ...agent }: WireAgent): Age
 
 // Agents, chats and timers live on the server, which runs replies and timers even while the app is
 // closed. This screen loads them, follows live updates, and sends the user's actions back.
-export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => void }) {
+type Props = { user: User; onUserChange: (user: User) => void; onSignedOut: () => void }
+
+export function Home({ user, onUserChange, onSignedOut }: Props) {
   const [drafts, setDrafts] = useState<Draft[]>([])
   const draftsRef = useRef(drafts)
   draftsRef.current = drafts
@@ -46,6 +49,7 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
   const [dropping, setDropping] = useState(false)
   const [agents, setAgents] = useState<Agent[]>([])
   const [creating, setCreating] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const agent = agents.find((a) => a.id === selectedId)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -381,7 +385,16 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
         onUpdate={update}
         onEdit={setEditingId}
         onDelete={setDeletingId}
+        onSettings={() => setSettingsOpen(true)}
       />
+      {settingsOpen && (
+        <SettingsDialog
+          user={user}
+          onUserChange={onUserChange}
+          onSignedOut={onSignedOut}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
       {editing && (
         <NewAgentDialog
           agent={editing}

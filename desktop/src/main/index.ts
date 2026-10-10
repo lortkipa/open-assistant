@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
-import { fetchAttachment, request, upload } from './api'
+import { fetchAttachment, fetchAvatar, request, upload, uploadAvatar } from './api'
 import { startEvents, stopEvents } from './events'
 import { cancelGoogle, googleAuthorize } from './google'
 
@@ -18,7 +18,11 @@ let mainWindow: BrowserWindow | null = null
 
 // Attachments show as <img src="oa-file://<id>">; the main process fetches them with the session token.
 const FILE_SCHEME = 'oa-file'
-protocol.registerSchemesAsPrivileged([{ scheme: FILE_SCHEME, privileges: { standard: true, secure: true, stream: true } }])
+// Uploaded profile photos the same way, as <img src="oa-avatar://<id>">.
+const AVATAR_SCHEME = 'oa-avatar'
+protocol.registerSchemesAsPrivileged(
+  [FILE_SCHEME, AVATAR_SCHEME].map((scheme) => ({ scheme, privileges: { standard: true, secure: true, stream: true } })),
+)
 
 function registerProtocol() {
   if (app.isPackaged) app.setAsDefaultProtocolClient(PROTOCOL)
@@ -118,6 +122,7 @@ ipcMain.handle('google:signIn', async () => {
 ipcMain.handle('google:cancel', () => cancelGoogle())
 
 ipcMain.handle('api:upload', (_e, name: string, type: string, bytes: ArrayBuffer) => upload(name, type, bytes))
+ipcMain.handle('api:uploadAvatar', (_e, type: string, bytes: ArrayBuffer) => uploadAvatar(type, bytes))
 
 // An attachment's bytes (to edit an image someone already sent), or null if it's gone.
 ipcMain.handle('attachment:read', async (_e, id: string) => {
@@ -142,6 +147,9 @@ ipcMain.handle('app:focus', () => focusWindow())
 app.whenReady().then(() => {
   protocol.handle(FILE_SCHEME, (req) =>
     fetchAttachment(new URL(req.url).hostname).catch(() => new Response(null, { status: 502 })),
+  )
+  protocol.handle(AVATAR_SCHEME, (req) =>
+    fetchAvatar(new URL(req.url).hostname).catch(() => new Response(null, { status: 502 })),
   )
   registerProtocol()
   createWindow()

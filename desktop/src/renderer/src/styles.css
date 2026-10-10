@@ -1482,9 +1482,12 @@ body.resizing .sidebar-handle::after {
   opacity: 1;
 }
 
-/* Darken the character itself, not a box around it. */
+/* Darken the character (or photo) itself, not a box around it. */
 .avatar-edit:hover .agent-icon,
-.avatar-edit:focus-visible .agent-icon {
+.avatar-edit:focus-visible .agent-icon,
+.avatar-edit:hover .avatar,
+.avatar-edit:focus-visible .avatar,
+.avatar-edit.busy .avatar {
   filter: brightness(0.55);
 }
 
@@ -1557,6 +1560,274 @@ body.resizing .sidebar-handle::after {
 .dialog-actions > .btn {
   flex: 1 1 0;
   border-radius: 999px;
+}
+
+/* Settings: a wide dialog with tabs on the left */
+
+.settings {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  height: min(540px, 100%);
+  display: flex;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.settings-tabs {
+  flex: none;
+  width: 196px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 10px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.settings-title {
+  margin: 0 0 10px;
+  padding: 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.settings-tab:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.settings-tab[aria-selected='true'] {
+  color: var(--text);
+  background: #1d1d20;
+}
+
+.settings-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.settings-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 56px 24px 24px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.settings-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.settings-section {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+/* Avatar, name and email like the sidebar profile; Log out on the right. */
+.settings-profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar-edit.settings-avatar {
+  flex: none;
+  width: 64px;
+  height: 64px;
+}
+
+.settings-avatar .avatar {
+  margin: 0;
+  transition: filter 0.15s;
+}
+
+.settings-avatar .avatar-edit-overlay {
+  inset: 0;
+}
+
+.avatar-edit.busy {
+  cursor: default;
+}
+
+.avatar-edit.busy .avatar-edit-overlay {
+  opacity: 1;
+}
+
+.settings-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+/* The name and its edit field are the same size, so nothing moves when editing starts. */
+.settings-name {
+  max-width: 100%;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -6px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+button.settings-name {
+  cursor: text;
+  transition: background 0.15s;
+}
+
+button.settings-name > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+button.settings-name > svg {
+  flex: none;
+  color: var(--faint);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+button.settings-name:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+button.settings-name:hover > svg,
+button.settings-name:focus-visible > svg {
+  opacity: 1;
+}
+
+button.settings-name:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.settings-name:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.settings-name-input {
+  width: min(100%, 280px);
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  outline: none;
+}
+
+.settings-email {
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.settings-email > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.settings-copy {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--faint);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.settings-copy:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.settings-copy:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.settings-logout,
+.settings-danger .btn {
+  flex: none;
+  height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+  gap: 8px;
+  border-radius: 999px;
+}
+
+.settings-danger-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-danger-row > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-danger-row h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-danger-row p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.settings-error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--danger);
 }
 
 /* Composer */

@@ -20,6 +20,7 @@ const messages: Record<string, string> = {
   ai_failed: 'The agent couldn’t reply. Please try again.',
   too_large: 'This message is too long to send.',
   not_found: 'That agent or timer no longer exists.',
+  invalid_image: 'Choose a PNG, JPEG, WebP or GIF image.',
 }
 
 export function errorMessage(data: any): string {
