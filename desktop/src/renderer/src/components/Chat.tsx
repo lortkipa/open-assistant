@@ -26,11 +26,8 @@ export function Chat({ agent, messages, typing }: Props) {
   return (
     <div className="chat">
       <header className="chat-header">
-        <AgentIcon shape={agent.shape} size={32} />
-        <div className="chat-title">
-          <div className="chat-name">{agent.name}</div>
-          <div className="chat-role">{agent.role}</div>
-        </div>
+        <AgentIcon shape={agent.shape} size={28} />
+        <div className="chat-name">{agent.name}</div>
       </header>
 
       <div className="chat-messages">
