@@ -11,7 +11,7 @@ type Props = {
   messages: Message[]
   timers: Timer[]
   typing: boolean
-  onEditMessage: (index: number, text: string) => void
+  onEditMessage: (id: string, text: string) => void
   onTimer: (id: string, control: TimerControl) => void
 }
 
@@ -19,7 +19,7 @@ export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer }
   // Stable across renders, so finished messages don't re-render when the chat changes.
   const editRef = useRef(onEditMessage)
   editRef.current = onEditMessage
-  const edit = useCallback((index: number, text: string) => editRef.current(index, text), [])
+  const edit = useCallback((id: string, text: string) => editRef.current(id, text), [])
 
   const endRef = useRef<HTMLDivElement>(null)
   const opened = useRef(false)
@@ -55,7 +55,7 @@ export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer }
           const className = `msg msg-${message.from}${previous?.from !== message.from ? ' first' : ''}`
           if (message.from === 'user') {
             return (
-              <div key={i} className={className}>
+              <div key={message.id} className={className}>
                 <div className="msg-text">{message.text}</div>
               </div>
             )
@@ -66,11 +66,11 @@ export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer }
             .map((a) => timers.find((t) => t.id === a.timer))
             .filter((t) => t !== undefined)
           return (
-            <div key={i} className={className}>
+            <div key={message.id} className={className}>
               <div className="msg-agent-body">
                 {message.text && (
                   <div className="msg-text">
-                    <Markdown text={message.text} index={i} onEdit={edit} />
+                    <Markdown text={message.text} id={message.id} onEdit={edit} />
                   </div>
                 )}
                 {created.length > 0 && (

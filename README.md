@@ -25,32 +25,33 @@ Open Assistant is an open-source, 24/7 AI agent designed to run in the cloud, ev
 
 ## Project status
 
-Open Assistant is in early development. Right now it has a desktop app (Linux, macOS, Windows) with email-code and Google sign-in, plus the server behind it. After sign-in you land on the main page: a resizable sidebar and a message box that takes text and file attachments. The agent list starts empty; the "+" button adds an agent with a character icon and a name you choose. Right-clicking an agent lets you pin it to the top, mark it read or unread (a reply that arrives while you are elsewhere marks it unread), edit it, or delete it. Agents answer through OpenAI's GPT-6 Luna, texting back like a person would, and can set timers that count down right in the chat (see [How agents work](#how-agents-work)). Agents and their chats are kept only in memory for now.
+Open Assistant is in early development. Right now it has a desktop app (Linux, macOS, Windows) with email-code and Google sign-in, plus the server behind it. After sign-in you land on the main page: a resizable sidebar and a message box that takes text and file attachments. The agent list starts empty; the "+" button adds an agent with a character icon and a name you choose. Right-clicking an agent lets you pin it to the top, mark it read or unread (a reply that arrives while you are elsewhere marks it unread), edit it, or delete it. Agents answer through OpenAI's GPT-6 Luna, texting back like a person would, and can set timers that count down right in the chat (see [How agents work](#how-agents-work)). Agents, chats and timers are stored on the server, which keeps replying and running timers while the app is closed.
 
 ## How agents work
 
 Chatting with an agent should feel like texting a person. The agent can send one message, several in a row, or nothing at all.
 
 - **Model:** OpenAI `gpt-6-luna` through the Responses API, with low reasoning effort and the built-in web search tool. Set `OPENAI_MODEL` in `server/.env` to use a different model.
-- **What the agent sees:** the user's name and email (taken from their account on the server), the agent's name, the user's current date, time and timezone, and the whole chat. Attachments are only sent as their file names for now.
+- **What the agent sees:** the user's name and email (taken from their account on the server), the agent's name, the user's current date, time and timezone (saved from the last message they sent, so timer replies use it too), and the whole chat. Attachments are only sent as their file names for now.
   - Consecutive user messages are joined into one `user` turn. People split one thought across several texts, and as separate turns the model tends to answer only the last one.
   - Each agent message is its own `assistant` turn, in the same JSON shape the model replies in (`{"message": "...", "more": true, "timers": []}`). Given its past texts as plain text, the model often failed to recognize them as already sent and repeated itself.
+- **Runs on the server:** the server runs the whole reply loop and keeps the timers, so an agent keeps working with the app closed. Agents, messages and timers are stored in Postgres. The app loads them with `GET /agents` and follows live updates (new messages, typing, timers, and changes made on another device) over server-sent events from `GET /agents/events`. Each time it reconnects, it loads everything again.
 - **One API call per message:** each call returns structured JSON, `{ "message": string | null, "more": boolean, "timers": [...] }`.
   - A `null` message means the agent stays quiet.
-  - With `more: true`, the app calls again with the new message added to the chat.
+  - With `more: true`, the server calls again with the new message added to the chat.
   - The agent keeps going until it returns `more: false` or `null`; there is no fixed limit.
   - Only the model's final answer is read. Newer models can also emit commentary messages (progress notes), which are ignored.
   - A reply that doesn't fit the schema is retried once, then reported as an error.
-- **Timers:** the agent manages timers through `timers`, a list of actions sent along with a message: `create` (label and 1 second to 24 hours; it starts right away), `stop` (pause), `start` (resume, or run again from full time), and `reset` (full time, not running). A request for a timer always makes a new one; the agent only restarts an existing timer when the user clearly means that one. These are not function calls, so there is still one API call per message.
+- **Timers:** the agent manages timers through `timers`, a list of actions sent along with a message: `create` (label and 1 second to 7 days; it starts right away), `stop` (pause), `start` (resume, or run again from full time), and `reset` (full time, not running). A request for a timer always makes a new one; the agent only restarts an existing timer when the user clearly means that one. These are not function calls, so there is still one API call per message.
   - Each timer shows under the message that created it, as a live countdown card. Running: Stop and Reset. Stopped: Start and Reset. Reset: Start. Finished: "Time's up" and Reset. The user's button presses act on the same timers.
-  - Timers live in the app with the chat. Each request sends their current state (id like `t1`, label, status, time left), and the prompt lists them. The agent's past turns include the actions it took, with the app-assigned ids.
-  - When a timer runs out, the app shows a desktop notification (clicking it opens that chat), and asks the agent to reply. The agent is told through a `developer` turn ("Timer t1 … ran out."), which is kept in the chat history but not shown. Like a user message, this interrupts a reply in flight.
+  - Timers are stored with the chat on the server. Each call includes their current state (id like `t1`, label, status, time left), and the prompt lists them. The agent's past turns include the actions it took, with the server-assigned ids.
+  - When a timer runs out, the server marks it done and asks the agent to reply, even if no app is open; a reply that arrives that way marks the agent unread. The agent is told through a `developer` turn ("Timer t1 … ran out."), which is kept in the chat history but not shown. Like a user message, this interrupts a reply in flight. An open app also shows a desktop notification (clicking it opens that chat). Timers that ran out while the server was down finish as soon as it starts again.
 - **Formatting:** agent messages render Markdown (GitHub-flavored: tables, task lists, strikethrough, footnotes), `$$…$$` math with KaTeX, and code blocks with syntax highlighting, a language label and a copy button. A single `$` stays text so prices aren't read as math. User messages show as typed.
-- **Typing dots:** the dots show while a call is in flight, which covers searching the web and writing.
-- **Interrupting:** if the user sends a message while the agent is typing, the app cancels the call in flight. The cancel reaches the server, which aborts the OpenAI request. The agent then re-reads the whole chat and starts its reply over. Messages it already sent stay.
-- **Leaving a chat:** a message that arrives while the user is in another chat marks that agent unread.
+- **Typing dots:** the dots show while the server is working on a reply, which covers searching the web and writing.
+- **Interrupting:** if the user sends a message while the agent is typing, the server aborts the OpenAI request in flight. The agent then re-reads the whole chat and starts its reply over. Messages it already sent stay.
+- **Unread:** the server marks every agent message unread; the app clears it right away when that chat is open. So a message that arrives while the user is in another chat, or has the app closed, leaves the agent unread.
 
-The app drives this loop through `POST /agents/reply` (`server/src/routes/agents.ts`), and the model call lives in `server/src/agents/reply.ts`. This is the exact system prompt (`server/src/agents/prompt.ts`); `${…}` parts are filled in per call:
+The routes live in `server/src/routes/agents.ts`. The reply loop and the timer scheduler are in `server/src/agents/runner.ts`, and the model call is in `server/src/agents/reply.ts`. This is the exact system prompt (`server/src/agents/prompt.ts`); `${…}` parts are filled in per call:
 
 ```text
 You are ${agentName}, an AI agent in Open Assistant, a messaging app. You are texting with ${userName} (${email}). It is ${now} (${timeZone}) for them.
@@ -74,7 +75,7 @@ You reply one message at a time. Each time, you see the whole chat and decide wh
 You can search the web. Do it whenever you need current or specific information instead of guessing.
 
 You can set timers. Each one shows in the chat as a live countdown, and the user can stop, start and reset it there too. To change timers, list actions in "timers" alongside your message; leave it empty otherwise:
-- {"action": "create", "label": "Pasta", "seconds": 600} makes a timer and starts it right away. Give it a short label.
+- {"action": "create", "label": "Pasta", "seconds": 600} makes a timer and starts it right away. Give it a short label. A timer can be 1 second to 7 days long; for anything longer, tell the user you can't set it.
 - When the user asks for a timer, always create a new one, even if one with the same label or length already exists. Only start, stop or reset an existing timer when the user clearly means that one ("start the tea timer again", "pause it").
 - {"action": "stop", "timer": "t1"} pauses a running timer.
 - {"action": "start", "timer": "t1"} resumes a stopped timer, or runs a reset or finished one again from the full time.

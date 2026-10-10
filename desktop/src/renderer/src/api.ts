@@ -18,7 +18,8 @@ const messages: Record<string, string> = {
   google_not_configured: 'Google sign-in isn’t set up on this server yet.',
   ai_not_configured: 'AI replies aren’t set up on this server yet.',
   ai_failed: 'The agent couldn’t reply. Please try again.',
-  too_large: 'This chat is too long for the agent to read.',
+  too_large: 'This message is too long to send.',
+  not_found: 'That agent or timer no longer exists.',
 }
 
 export function errorMessage(data: any): string {

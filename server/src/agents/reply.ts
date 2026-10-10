@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 import type { EasyInputMessage, Response } from 'openai/resources/responses/responses'
-import { systemPrompt, type PromptContext } from './prompt.ts'
+import { MAX_TIMER_SECONDS, systemPrompt, type PromptContext } from './prompt.ts'
 
 export type TimerAction = {
   action: 'create' | 'start' | 'stop' | 'reset'
@@ -11,8 +11,6 @@ export type TimerAction = {
 // 'event' is something that happened in the app, like a timer running out.
 export type ChatMessage = { from: 'user' | 'agent' | 'event'; text: string; timers?: TimerAction[] }
 export type Next = { message: string | null; more: boolean; timers: TimerAction[] }
-
-export const MAX_TIMER_SECONDS = 24 * 60 * 60
 
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna'
 

@@ -1,6 +1,7 @@
 import { join, resolve } from 'node:path'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { request } from './api'
+import { startEvents, stopEvents } from './events'
 import { cancelGoogle, googleAuthorize } from './google'
 
 const PROTOCOL = 'openassistant'
@@ -83,21 +84,11 @@ function createWindow() {
   else win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
-// Requests the renderer may cancel (an agent reply the user interrupted), by the id it picked.
-const inFlight = new Map<string, AbortController>()
+ipcMain.handle('api:request', (_e, method: string, path: string, body?: unknown) => request(method, path, body))
 
-ipcMain.handle('api:request', async (_e, method: string, path: string, body?: unknown, requestId?: string) => {
-  if (!requestId) return request(method, path, body)
-  const controller = new AbortController()
-  inFlight.set(requestId, controller)
-  try {
-    return await request(method, path, body, controller.signal)
-  } finally {
-    inFlight.delete(requestId)
-  }
-})
-
-ipcMain.handle('api:abort', (_e, requestId: string) => inFlight.get(requestId)?.abort())
+// Live updates from the server, while the signed-in main screen is open.
+ipcMain.handle('events:start', (e) => startEvents(e.sender))
+ipcMain.handle('events:stop', () => stopEvents())
 
 ipcMain.handle('google:signIn', async () => {
   const client = await request('GET', '/auth/google/client')

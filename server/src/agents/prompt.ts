@@ -17,10 +17,15 @@ export type TimerState = {
   remaining: number
 }
 
-const clock = (seconds: number) => {
-  const h = Math.floor(seconds / 3600)
+// A timer is for something coming up soon; anything further out belongs to reminders.
+export const MAX_TIMER_SECONDS = 7 * 24 * 60 * 60
+
+export const clock = (seconds: number) => {
+  const d = Math.floor(seconds / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   const s = String(seconds % 60).padStart(2, '0')
+  if (d) return `${d}d ${h}:${String(m).padStart(2, '0')}:${s}`
   return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`
 }
 
@@ -49,7 +54,7 @@ You reply one message at a time. Each time, you see the whole chat and decide wh
 You can search the web. Do it whenever you need current or specific information instead of guessing.
 
 You can set timers. Each one shows in the chat as a live countdown, and the user can stop, start and reset it there too. To change timers, list actions in "timers" alongside your message; leave it empty otherwise:
-- {"action": "create", "label": "Pasta", "seconds": 600} makes a timer and starts it right away. Give it a short label.
+- {"action": "create", "label": "Pasta", "seconds": 600} makes a timer and starts it right away. Give it a short label. A timer can be 1 second to 7 days long; for anything longer, tell the user you can't set it.
 - When the user asks for a timer, always create a new one, even if one with the same label or length already exists. Only start, stop or reset an existing timer when the user clearly means that one ("start the tea timer again", "pause it").
 - {"action": "stop", "timer": "t1"} pauses a running timer.
 - {"action": "start", "timer": "t1"} resumes a stopped timer, or runs a reset or finished one again from the full time.

@@ -5,18 +5,7 @@ import { Composer } from '../components/Composer'
 import { Chat, type TimerControl } from '../components/Chat'
 import { NewAgentDialog } from '../components/NewAgentDialog'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import {
-  applyTimerActions,
-  finishTimer,
-  formatClock,
-  resetTimer,
-  startTimer,
-  stopTimer,
-  timeLeft,
-  type Agent,
-  type Message,
-  type Timer,
-} from '../agents'
+import { fromWire, type Agent, type Message, type WireTimer } from '../agents'
 import { UploadIcon } from '../components/icons'
 
 // 20 keeps every image under Claude's full-size limit (stricter past 20); 25 MB keeps requests sane.
@@ -25,10 +14,20 @@ const MAX_FILE_SIZE = 25 * 1024 * 1024
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files')
 
+type WireAgent = Omit<Agent, 'timers' | 'messages'> & { messages?: Message[]; timers?: WireTimer[] }
+type AgentChanges = Partial<Pick<Agent, 'name' | 'shape' | 'pinned' | 'unread'>>
+
+const fromWireAgent = ({ messages = [], timers = [], ...agent }: WireAgent): Agent => ({
+  ...agent,
+  messages,
+  timers: timers.map(fromWire),
+})
+
+// Agents, chats and timers live on the server, which runs replies and timers even while the app is
+// closed. This screen loads them, follows live updates, and sends the user's actions back.
 export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => void }) {
   const [files, setFiles] = useState<File[]>([])
   const [dropping, setDropping] = useState(false)
-  // Agents live only in memory until there is a server side for them.
   const [agents, setAgents] = useState<Agent[]>([])
   const [creating, setCreating] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -37,30 +36,65 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const editing = agents.find((a) => a.id === editingId)
   const deleting = agents.find((a) => a.id === deletingId)
-  // Read from reply loops and timers, which outlive the render that started them.
+  // Agents currently searching or typing a reply.
+  const [typing, setTyping] = useState<Set<string>>(new Set())
+  // An object, so the same message shown again restarts its timer.
+  const [notice, setNotice] = useState<{ text: string } | null>(null)
+  // Read from live updates, which are handled outside of any one render.
   const selectedRef = useRef(selectedId)
   selectedRef.current = selectedId
   const agentsRef = useRef(agents)
   agentsRef.current = agents
 
-  const update = (id: string, changes: Partial<Agent>) =>
-    setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, ...changes } : a)))
+  const fail = (data: unknown) => setNotice({ text: errorMessage(data) })
+
+  const patch = (id: string, change: (agent: Agent) => Partial<Agent>) =>
+    setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, ...change(a) } : a)))
+
+  // Shows the change right away and saves it.
+  const update = (id: string, changes: AgentChanges) => {
+    patch(id, () => changes)
+    api.request('PATCH', `/agents/${id}`, changes).then(({ status, data }) => status !== 200 && fail(data))
+  }
 
   // Opening an agent reads it.
   const select = (id: string | null) => {
     setSelectedId(id)
-    if (id) update(id, { unread: false })
+    selectedRef.current = id
+    if (id && agentsRef.current.find((a) => a.id === id)?.unread) update(id, { unread: false })
+  }
+
+  const upsert = ({ messages, timers, ...changes }: WireAgent) =>
+    setAgents((prev) =>
+      prev.some((a) => a.id === changes.id)
+        ? prev.map((a) => (a.id === changes.id ? { ...a, ...changes } : a))
+        : [...prev, fromWireAgent({ ...changes, messages, timers })],
+    )
+
+  // The same message can come back both as a response and as a live update.
+  const addMessage = (id: string, message: Message, timers?: WireTimer[]) =>
+    patch(id, (a) => ({
+      messages: a.messages.some((m) => m.id === message.id) ? a.messages : [...a.messages, message],
+      ...(timers && { timers: timers.map(fromWire) }),
+    }))
+
+  const removeLocal = (id: string) => {
+    setAgents((prev) => prev.filter((a) => a.id !== id))
+    if (selectedRef.current === id) select(null)
   }
 
   const remove = (id: string) => {
-    cancelReply(id)
-    setAgents((prev) => prev.filter((a) => a.id !== id))
-    if (selectedId === id) setSelectedId(null)
+    removeLocal(id)
+    api.request('DELETE', `/agents/${id}`).then(({ status, data }) => status !== 200 && fail(data))
   }
-  // Agents currently searching or typing a reply.
-  const [typing, setTyping] = useState<Set<string>>(new Set())
-  // Each agent's reply in progress, by the id of its current request. Writing again cancels it.
-  const replies = useRef(new Map<string, string>())
+
+  const create = async (changes: { name: string; shape: Agent['shape'] }) => {
+    setCreating(false)
+    const { status, data } = await api.request('POST', '/agents', changes)
+    if (status !== 200) return fail(data)
+    upsert(data.agent)
+    select(data.agent.id)
+  }
 
   const setTypingFor = (id: string, on: boolean) =>
     setTyping((prev) => {
@@ -70,127 +104,87 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
       return next
     })
 
-  const append = (id: string, message: Message) =>
-    setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, messages: [...a.messages, message] } : a)))
-
-  const editMessage = (id: string, index: number, text: string) =>
-    setAgents((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, messages: a.messages.map((m, i) => (i === index ? { ...m, text } : m)) } : a,
-      ),
-    )
-
-  const cancelReply = (id: string) => {
-    const requestId = replies.current.get(id)
-    if (!requestId) return
-    replies.current.delete(id)
-    api.abort(requestId)
+  // Ticking a task-list checkbox in an agent's message.
+  const editMessage = (id: string, messageId: string, text: string) => {
+    patch(id, (a) => ({ messages: a.messages.map((m) => (m.id === messageId ? { ...m, text } : m)) }))
+    api
+      .request('PATCH', `/agents/${id}/messages/${messageId}`, { text })
+      .then(({ status, data }) => status !== 200 && fail(data))
   }
 
-  // Stop all replies when signing out.
-  useEffect(() => {
-    const inProgress = replies.current
-    return () => [...inProgress.keys()].forEach(cancelReply)
-  }, [])
-
-  // The agent reads the whole chat and sends messages one API call at a time, until it says it's done
-  // (or chooses to say nothing). A newer reply for the same agent makes this one drop out unseen.
-  const reply = async (id: string, name: string, transcript: Message[]) => {
-    cancelReply(id)
-    setTypingFor(id, true)
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    while (true) {
-      const requestId = crypto.randomUUID()
-      replies.current.set(id, requestId)
-      const messages = transcript.map(({ from, text, timers }) => ({ from, text, timers }))
-      const timers = (agentsRef.current.find((a) => a.id === id)?.timers ?? []).map(timerState)
-      const body = { agent: { name }, timeZone, messages, timers }
-      const { status, data } = await api.request('POST', '/agents/reply', body, requestId)
-      if (replies.current.get(id) !== requestId) return
-      if (status !== 200) {
-        setNotice({ text: errorMessage(data) })
-        break
-      }
-      const current = agentsRef.current.find((a) => a.id === id)
-      if (!current) break
-      const applied = applyTimerActions(current.timers, data.timers ?? [])
-      if (data.message || applied.actions.length) {
-        const message: Message = { from: 'agent', text: data.message ?? '', time: now() }
-        if (applied.actions.length) message.timers = applied.actions
-        transcript = [...transcript, message]
-        setAgents((prev) =>
-          prev.map((a) => (a.id === id ? { ...a, timers: applied.timers, messages: [...a.messages, message] } : a)),
-        )
-        // A reply to an agent you've since left marks it unread.
-        if (selectedRef.current !== id) update(id, { unread: true })
-      }
-      if (!data.more || (!data.message && !applied.actions.length)) break
-    }
-    replies.current.delete(id)
-    setTypingFor(id, false)
-  }
-
-  const send = (text: string, attached: File[]) => {
+  // The server cancels a reply in flight, and the agent starts over with the whole chat.
+  const send = async (text: string, attached: File[]) => {
     if (!agent) return
     const names = attached.map((file) => `📎 ${file.name}`).join('\n')
-    const message: Message = { from: 'user', text: [text, names].filter(Boolean).join('\n\n'), time: now() }
-    append(agent.id, message)
-    reply(agent.id, agent.name, [...agent.messages, message])
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const body = { text: [text, names].filter(Boolean).join('\n\n'), timeZone }
+    const { status, data } = await api.request('POST', `/agents/${agent.id}/messages`, body)
+    if (status !== 200) return fail(data)
+    addMessage(agent.id, data.message)
   }
+
   // The user runs a timer from its card. The agent sees the new state next time it replies.
-  const controlTimer = (id: string, timerId: string, control: TimerControl) => {
-    const change = control === 'start' ? startTimer : control === 'stop' ? stopTimer : resetTimer
-    setAgents((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, timers: a.timers.map((t) => (t.id === timerId ? change(t) : t)) } : a)),
-    )
+  const controlTimer = async (id: string, timerId: string, control: TimerControl) => {
+    const { status, data } = await api.request('POST', `/agents/${id}/timers/${timerId}`, { action: control })
+    if (status !== 200) return fail(data)
+    patch(id, () => ({ timers: (data.timers as WireTimer[]).map(fromWire) }))
   }
 
-  // When a timer runs out: mark it done, tell the agent (which then texts the user) and show a notification.
-  // Returns whether any timer was due.
-  const finishDue = () => {
-    const at = Date.now()
-    let finished = false
-    for (const a of agentsRef.current) {
-      const due = a.timers.filter((t) => t.status === 'running' && t.endsAt <= at)
-      if (!due.length) continue
-      finished = true
-      const events: Message[] = due.map((t) => ({
-        from: 'event',
-        text: `Timer ${t.id} “${t.label}” (${formatClock(t.seconds * 1000)}) ran out.`,
-        time: now(),
-      }))
-      const transcript = [...a.messages, ...events]
-      const changes = { timers: a.timers.map((t) => (due.includes(t) ? finishTimer(t) : t)), messages: transcript }
-      update(a.id, changes)
-      // The reply below reads the timers before React re-renders; it must already see these as done.
-      agentsRef.current = agentsRef.current.map((x) => (x.id === a.id ? { ...x, ...changes } : x))
-      for (const t of due) {
-        const notification = new Notification(a.name, { body: `⏰ ${t.label}: time’s up` })
-        notification.onclick = () => {
-          select(a.id)
-          api.focus()
+  // Live updates from the server, for as long as this screen is open (signing out closes it).
+  useEffect(
+    () =>
+      api.listen((event) => {
+        switch (event.type) {
+          // (Re)connected: anything could have happened meanwhile, so load it all again.
+          case 'open':
+            api.request('GET', '/agents').then(({ status, data }) => {
+              if (status !== 200) return fail(data)
+              const loaded = data.agents as (WireAgent & { typing: boolean })[]
+              setAgents(loaded.map(fromWireAgent))
+              setTyping(new Set(loaded.filter((a) => a.typing).map((a) => a.id)))
+              if (selectedRef.current && !loaded.some((a) => a.id === selectedRef.current)) select(null)
+            })
+            break
+          case 'agent':
+            upsert(event.agent)
+            break
+          case 'agent_deleted':
+            removeLocal(event.id)
+            break
+          case 'message':
+            addMessage(event.agentId, event.message, event.timers)
+            // The server marks every agent message unread; the open chat reads it at once.
+            if (event.message.from !== 'agent') break
+            if (selectedRef.current === event.agentId) update(event.agentId, { unread: false })
+            else patch(event.agentId, () => ({ unread: true }))
+            break
+          case 'message_edited':
+            patch(event.agentId, (a) => ({
+              messages: a.messages.map((m) => (m.id === event.id ? { ...m, text: event.text } : m)),
+            }))
+            break
+          case 'timers':
+            patch(event.agentId, () => ({ timers: (event.timers as WireTimer[]).map(fromWire) }))
+            break
+          case 'typing':
+            setTypingFor(event.agentId, event.on)
+            break
+          case 'timer_done': {
+            const notification = new Notification(event.agentName, { body: `⏰ ${event.label}: time’s up` })
+            notification.onclick = () => {
+              select(event.agentId)
+              api.focus()
+            }
+            break
+          }
+          case 'reply_error':
+            fail({ error: event.error })
+            break
         }
-      }
-      reply(a.id, a.name, transcript)
-    }
-    return finished
-  }
+      }),
+    [],
+  )
 
-  // Wake up for the next timer to run out, across all agents. Timeouts can fire a moment early;
-  // then nothing is due yet and no state changes, so `wake` schedules another try.
-  const [wake, setWake] = useState(0)
-  useEffect(() => {
-    const ends = agents.flatMap((a) => a.timers.filter((t) => t.status === 'running').map((t) => t.endsAt))
-    if (!ends.length) return
-    const t = setTimeout(
-      () => finishDue() || setWake((n) => n + 1),
-      Math.max(0, Math.min(...ends) - Date.now()),
-    )
-    return () => clearTimeout(t)
-  }, [agents, wake])
-
-  // An object, so the same message shown again restarts its timer.
-  const [notice, setNotice] = useState<{ text: string } | null>(null)
   // dragenter/dragleave fire for every child crossed; count them to know when the drag really left.
   const dragDepth = useRef(0)
 
@@ -286,15 +280,7 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
         </ConfirmDialog>
       )}
       {creating && (
-        <NewAgentDialog
-          onClose={() => setCreating(false)}
-          onCreate={({ name, shape }) => {
-            const id = crypto.randomUUID()
-            setAgents((prev) => [...prev, { id, name, shape, messages: [], timers: [] }])
-            setSelectedId(id)
-            setCreating(false)
-          }}
-        />
+        <NewAgentDialog onClose={() => setCreating(false)} onCreate={create} />
       )}
       <main className="main" onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
         <div className="main-body">
@@ -305,7 +291,7 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
               messages={agent.messages}
               timers={agent.timers}
               typing={typing.has(agent.id)}
-              onEditMessage={(index, text) => editMessage(agent.id, index, text)}
+              onEditMessage={(messageId, text) => editMessage(agent.id, messageId, text)}
               onTimer={(timerId, control) => controlTimer(agent.id, timerId, control)}
             />
           )}
@@ -339,14 +325,3 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
     </div>
   )
 }
-
-// What the agent is told about a timer.
-const timerState = (t: Timer) => ({
-  id: t.id,
-  label: t.label,
-  seconds: t.seconds,
-  status: t.status,
-  remaining: Math.ceil(timeLeft(t) / 1000),
-})
-
-const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })

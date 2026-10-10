@@ -1,4 +1,4 @@
-import postgres from 'postgres'
+import postgres, { type Sql, type TransactionSql } from 'postgres'
 
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set')
 
@@ -13,3 +13,6 @@ export type User = {
   name: string | null
   avatarUrl: string | null
 }
+
+// Either the pool or a transaction.
+export type Db = Sql | TransactionSql

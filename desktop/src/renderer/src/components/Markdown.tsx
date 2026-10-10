@@ -96,10 +96,10 @@ const components: Components = {
 
 // Renders an agent message. Raw HTML in the text shows as text, never as markup.
 // Ticking a task-list checkbox rewrites the message text through onEdit, so the agent sees it too.
-type Props = { text: string; index?: number; onEdit?: (index: number, text: string) => void }
+type Props = { text: string; id?: string; onEdit?: (id: string, text: string) => void }
 
-export const Markdown = memo(function Markdown({ text, index = 0, onEdit }: Props) {
-  const source = onEdit ? { text, edit: (next: string) => onEdit(index, next) } : null
+export const Markdown = memo(function Markdown({ text, id = '', onEdit }: Props) {
+  const source = onEdit ? { text, edit: (next: string) => onEdit(id, next) } : null
   return (
     <div className="md">
       <Source.Provider value={source}>
