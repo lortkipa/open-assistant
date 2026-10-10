@@ -60,6 +60,13 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
   const append = (id: string, message: Message) =>
     setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, messages: [...a.messages, message] } : a)))
 
+  const editMessage = (id: string, index: number, text: string) =>
+    setAgents((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, messages: a.messages.map((m, i) => (i === index ? { ...m, text } : m)) } : a,
+      ),
+    )
+
   const cancelReply = (id: string) => {
     const requestId = replies.current.get(id)
     if (!requestId) return
@@ -224,6 +231,7 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
               agent={agent}
               messages={agent.messages}
               typing={typing.has(agent.id)}
+              onEditMessage={(index, text) => editMessage(agent.id, index, text)}
             />
           )}
         </div>

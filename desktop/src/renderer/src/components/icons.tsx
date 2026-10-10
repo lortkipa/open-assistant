@@ -136,3 +136,16 @@ export const TrashIcon = ({ size }: { size?: number }) => (
     <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" />
   </Icon>
 )
+
+export const CopyIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <rect x="8.5" y="8.5" width="12" height="12" rx="2.5" />
+    <path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5" />
+  </Icon>
+)
+
+export const CheckIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="m5 12.5 4.5 4.5L19 7.5" />
+  </Icon>
+)

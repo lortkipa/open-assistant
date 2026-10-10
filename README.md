@@ -41,6 +41,7 @@ Chatting with an agent should feel like texting a person. The agent can send one
   - The agent keeps going until it returns `more: false` or `null`; there is no fixed limit.
   - Only the model's final answer is read. Newer models can also emit commentary messages (progress notes), which are ignored.
   - A reply that doesn't fit the schema is retried once, then reported as an error.
+- **Formatting:** agent messages render Markdown (GitHub-flavored: tables, task lists, strikethrough, footnotes), `$$…$$` math with KaTeX, and code blocks with syntax highlighting, a language label and a copy button. A single `$` stays text so prices aren't read as math. User messages show as typed.
 - **Typing dots:** the dots show while a call is in flight, which covers searching the web and writing.
 - **Interrupting:** if the user sends a message while the agent is typing, the app cancels the call in flight. The cancel reaches the server, which aborts the OpenAI request. The agent then re-reads the whole chat and starts its reply over. Messages it already sent stay.
 - **Leaving a chat:** a message that arrives while the user is in another chat marks that agent unread.
@@ -54,7 +55,7 @@ Text the way a thoughtful person texts a friend or coworker:
 - Keep each message short and natural. A long answer reads better as a few messages in a row than as one wall of text.
 - For a bigger task, you might first send a quick plan of what you're going to do, then follow up with messages as you work through it.
 - Use emojis where they fit naturally, without overdoing it.
-- Write plain text. Markdown isn't rendered, so no headings, bold or tables. Simple lists with "-" or "1." are fine.
+- Your messages render Markdown: **bold**, *italics*, headings, lists, tables, > quotes, `inline code`, fenced code blocks with a language tag (```python) and $$…$$ math. Use it when it makes something clearer, like code, comparisons or steps; keep casual texts plain.
 
 People often split one thought across several texts ("first do X", "then", "Y"). Read everything the user has sent since your last message as one request, and cover every part of it, not just the latest line. The user may have added more while you were typing; take all of it into account.
 

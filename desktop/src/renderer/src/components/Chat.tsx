@@ -1,10 +1,21 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import type { Agent, Message } from '../agents'
 import { AgentIcon } from './AgentIcon'
+import { Markdown } from './Markdown'
 
-type Props = { agent: Agent; messages: Message[]; typing: boolean }
+type Props = {
+  agent: Agent
+  messages: Message[]
+  typing: boolean
+  onEditMessage: (index: number, text: string) => void
+}
 
-export function Chat({ agent, messages, typing }: Props) {
+export function Chat({ agent, messages, typing, onEditMessage }: Props) {
+  // Stable across renders, so finished messages don't re-render when the chat changes.
+  const editRef = useRef(onEditMessage)
+  editRef.current = onEditMessage
+  const edit = useCallback((index: number, text: string) => editRef.current(index, text), [])
+
   const endRef = useRef<HTMLDivElement>(null)
   const opened = useRef(false)
 
@@ -34,7 +45,9 @@ export function Chat({ agent, messages, typing }: Props) {
         {messages.map((message, i) => (
           // A new speaker starts a new group, spaced from the one before.
           <div key={i} className={`msg msg-${message.from}${messages[i - 1]?.from !== message.from ? ' first' : ''}`}>
-            <div className="msg-text">{message.text}</div>
+            <div className="msg-text">
+              {message.from === 'agent' ? <Markdown text={message.text} index={i} onEdit={edit} /> : message.text}
+            </div>
           </div>
         ))}
         {typing && (
