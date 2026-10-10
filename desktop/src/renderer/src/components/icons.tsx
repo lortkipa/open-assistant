@@ -1,0 +1,105 @@
+import type { ReactNode } from 'react'
+
+// Stroke icons on a 24px grid; they take the surrounding text color.
+function Icon({ size = 20, children }: { size?: number; children: ReactNode }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {children}
+    </svg>
+  )
+}
+
+export const SearchIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="m20 20-4.2-4.2" />
+  </Icon>
+)
+
+export const PlusIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M12 5v14M5 12h14" />
+  </Icon>
+)
+
+export const ArrowUpIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M12 19V5M6 11l6-6 6 6" />
+  </Icon>
+)
+
+export const CloseIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </Icon>
+)
+
+export const FileIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+    <path d="M14 3v5h5" />
+  </Icon>
+)
+
+export const UploadIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M12 15V4M7 9l5-5 5 5" />
+    <path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" />
+  </Icon>
+)
+
+export const GaugeIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Icon>
+)
+
+export const HelpIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" />
+  </Icon>
+)
+
+export const ChevronRightIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="m9 6 6 6-6 6" />
+  </Icon>
+)
+
+export const MessageIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </Icon>
+)
+
+export const InfoIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 16v-4M12 8h.01" />
+  </Icon>
+)
+
+export const SettingsIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+)
+
+export const LogOutIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+  </Icon>
+)

@@ -28,6 +28,7 @@
 }
 
 input,
+textarea,
 button {
   font-family: inherit;
 }
@@ -363,8 +364,570 @@ h1 + .muted {
   color: var(--text);
 }
 
-input {
+input,
+textarea {
   user-select: text;
+}
+
+/* Main page */
+
+.app {
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+body.resizing {
+  cursor: col-resize;
+}
+
+body.resizing * {
+  cursor: col-resize !important;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.icon-btn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.icon-btn:focus-visible,
+.composer-send:focus-visible,
+.attachment-remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Sidebar */
+
+.sidebar {
+  position: relative;
+  flex: none;
+  max-width: calc(100vw - 360px);
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  transition: width 0.16s ease;
+}
+
+.sidebar.dragging {
+  transition: none;
+}
+
+.sidebar-top {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.sidebar.collapsed .sidebar-top {
+  flex-direction: column;
+  align-items: center;
+}
+
+.sidebar-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+  padding: 6px;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sidebar-profile:hover,
+.sidebar-profile.active {
+  background: var(--surface-hover);
+}
+
+.sidebar-profile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* On the rail it's a circle around the avatar, an even ring on every side. */
+.sidebar.collapsed .sidebar-profile {
+  align-self: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.sidebar .avatar {
+  flex: none;
+  margin: 0;
+}
+
+.sidebar-who {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.sidebar-name,
+.sidebar-email {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sidebar-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sidebar-email {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Account menu: pops up above the profile button, wider than the rail when collapsed. */
+.account-menu {
+  position: absolute;
+  left: 12px;
+  bottom: 66px;
+  width: max(240px, calc(100% - 24px));
+  z-index: 3;
+}
+
+.sidebar.collapsed .account-menu {
+  bottom: 62px;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  animation: menu-in 0.12s ease-out;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.menu-item > svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.menu-item > span {
+  flex: 1;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--surface-hover);
+  outline: none;
+}
+
+.menu-item:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.menu-item.open {
+  background: var(--surface-hover);
+}
+
+.menu-group {
+  position: relative;
+}
+
+/* The transparent left padding bridges the gap, so moving the pointer across keeps it open. */
+.menu-flyout {
+  position: absolute;
+  top: -6px;
+  left: 100%;
+  padding-left: 12px;
+  z-index: 1;
+}
+
+.menu-flyout .menu {
+  width: 200px;
+}
+
+.menu-sep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--border);
+}
+
+.menu-usage {
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.menu-usage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-usage-row > svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.menu-usage-row > span:first-of-type {
+  flex: 1;
+}
+
+.menu-usage-value {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.menu-usage-bar {
+  height: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.menu-usage-bar > div {
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+
+/* Grab strip over the right border; the line lights up on hover and while dragging. */
+.sidebar-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 8px;
+  z-index: 2;
+  cursor: col-resize;
+  outline: none;
+  touch-action: none;
+}
+
+.sidebar-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.sidebar-handle:hover::after,
+.sidebar-handle:focus-visible::after,
+.sidebar.dragging .sidebar-handle::after,
+body.resizing .sidebar-handle::after {
+  background: var(--border-strong);
+}
+
+/* Main pane */
+
+.main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.main-composer {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 24px 24px;
+}
+
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  animation: fade 0.12s ease-out;
+}
+
+.drop-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text);
+  font-weight: 550;
+  border: 2px dashed var(--border-strong);
+  border-radius: 20px;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Composer */
+
+.composer {
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  cursor: text;
+  transition: border-color 0.15s;
+}
+
+.composer:focus-within {
+  border-color: var(--border-strong);
+}
+
+.composer-files {
+  display: flex;
+  gap: 8px;
+  padding: 2px 2px 6px;
+  /* Margin, not padding: the scrollbar sits outside the padding, at the strip's bottom edge. */
+  margin-bottom: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.attachment {
+  position: relative;
+  flex: none;
+  max-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 30px 6px 6px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: default;
+}
+
+.attachment-thumb,
+.attachment-icon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 9px;
+}
+
+.attachment-thumb {
+  object-fit: cover;
+}
+
+.attachment-icon {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: var(--border);
+}
+
+.attachment-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.attachment-name {
+  font-size: 13px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.attachment-size {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.attachment-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.attachment-remove:hover {
+  color: var(--text);
+  background: var(--border-strong);
+}
+
+.composer-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  grid-template-areas: 'attach text send';
+  align-items: end;
+  column-gap: 8px;
+}
+
+.composer-row.stacked {
+  grid-template-areas:
+    'text text text'
+    'attach . send';
+  row-gap: 4px;
+}
+
+.composer-attach {
+  grid-area: attach;
+}
+
+.composer-input,
+.composer-mirror {
+  padding: 7px 4px;
+  font: inherit;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.composer-input {
+  grid-area: text;
+  min-width: 0;
+  max-height: 40vh;
+  margin: 0;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.composer-row.stacked .composer-input {
+  padding: 6px 8px 2px;
+}
+
+.composer-input::placeholder {
+  color: var(--faint);
+}
+
+/* Same box as the textarea in the single-row layout: between the two buttons. */
+.composer-mirror {
+  position: absolute;
+  top: 0;
+  left: 44px;
+  right: 44px;
+  height: 0;
+  padding-block: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.composer-send {
+  grid-area: send;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #000000;
+  background: var(--text);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s, transform 0.05s;
+}
+
+.composer-send:hover:not(:disabled) {
+  background: #ffffff;
+}
+
+.composer-send:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.composer-send:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.composer-notice {
+  margin: 0;
+  padding: 2px 8px 8px;
+  font-size: 13px;
+  color: var(--danger);
+  user-select: text;
+  cursor: text;
 }
 
 @media (prefers-reduced-motion: reduce) {
