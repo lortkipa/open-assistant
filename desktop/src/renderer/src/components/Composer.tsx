@@ -17,9 +17,17 @@ type Props = {
   onSubmit: (text: string, files: File[]) => void
   // Shown under the box, e.g. why some files weren't attached.
   notice?: string
+  placeholder?: string
 }
 
-export function Composer({ files, onAddFiles, onRemoveFile, onSubmit, notice }: Props) {
+export function Composer({
+  files,
+  onAddFiles,
+  onRemoveFile,
+  onSubmit,
+  notice,
+  placeholder = 'Message Open Assistant',
+}: Props) {
   const [text, setText] = useState('')
   // Text sits on its own row above the buttons once it no longer fits on one line beside them.
   const [stacked, setStacked] = useState(false)
@@ -116,7 +124,7 @@ export function Composer({ files, onAddFiles, onRemoveFile, onSubmit, notice }: 
           ref={inputRef}
           className="composer-input"
           rows={1}
-          placeholder="Message Open Assistant"
+          placeholder={placeholder}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}

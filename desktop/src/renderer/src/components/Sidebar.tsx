@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import type { User } from '../api'
+import type { Agent } from '../agents'
 import { AccountMenu } from './AccountMenu'
+import { AgentIcon } from './AgentIcon'
 import { Avatar } from './Avatar'
 import { PlusIcon, SearchIcon } from './icons'
 
@@ -26,7 +28,15 @@ function loadLayout(): Layout {
 
 const clampWidth = (width: number) => Math.round(Math.max(MIN, Math.min(width, MAX, window.innerWidth - MAIN_MIN)))
 
-export function Sidebar({ user, onSignedOut }: { user: User; onSignedOut: () => void }) {
+type Props = {
+  user: User
+  onSignedOut: () => void
+  agents: Agent[]
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+}
+
+export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect }: Props) {
   const [layout, setLayout] = useState(loadLayout)
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = useCallback(() => setMenuOpen(false), [])
@@ -101,12 +111,25 @@ export function Sidebar({ user, onSignedOut }: { user: User; onSignedOut: () => 
         <button className="icon-btn" aria-label="Search" title="Search">
           <SearchIcon />
         </button>
-        <button className="icon-btn" aria-label="New" title="New">
+        <button className="icon-btn" aria-label="New" title="New" onClick={() => onSelect(null)}>
           <PlusIcon />
         </button>
       </div>
 
-      <div className="sidebar-body" />
+      <nav className="sidebar-body agent-list" aria-label="Agents">
+        {agents.map((agent) => (
+          <button
+            key={agent.id}
+            className="agent-item"
+            aria-current={agent.id === selectedId ? 'page' : undefined}
+            title={collapsed ? agent.name : undefined}
+            onClick={() => onSelect(agent.id)}
+          >
+            <AgentIcon shape={agent.shape} size={28} />
+            {!collapsed && <span className="agent-name">{agent.name}</span>}
+          </button>
+        ))}
+      </nav>
 
       {menuOpen && <AccountMenu onClose={closeMenu} onSignedOut={onSignedOut} />}
       <button

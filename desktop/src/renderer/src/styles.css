@@ -447,6 +447,78 @@ body.resizing * {
   min-height: 0;
 }
 
+/* Agents */
+
+.agent-icon {
+  display: block;
+  flex: none;
+  object-fit: contain;
+}
+
+.agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 12px -4px 8px;
+  padding: 0 4px;
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.agent-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+  flex: none;
+  padding: 4px 8px;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.agent-item:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.agent-item[aria-current='page'] {
+  color: var(--text);
+  font-weight: 600;
+  background: var(--surface-hover);
+}
+
+.agent-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.sidebar.collapsed .agent-list {
+  align-items: center;
+  padding: 0;
+}
+
+.sidebar.collapsed .agent-item {
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+
+.agent-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .sidebar-profile {
   display: flex;
   align-items: center;
@@ -685,9 +757,120 @@ body.resizing .sidebar-handle::after {
   flex-direction: column;
 }
 
+/* The whole pane is selectable, so a selection can start in the gaps beside and between messages. */
 .main-body {
   flex: 1;
   min-height: 0;
+  user-select: text;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Chat */
+
+.chat {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.chat-header {
+  user-select: none;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 12px;
+  background: var(--bg);
+}
+
+.chat-title {
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.chat-name {
+  font-weight: 600;
+}
+
+.chat-role {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0 24px;
+}
+
+/* A new speaker starts a new group. */
+.msg.first:not(:first-child) {
+  margin-top: 16px;
+}
+
+.msg-typing {
+  display: flex;
+  gap: 4px;
+  padding: 9px 0;
+}
+
+.msg-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: typing 1.2s infinite ease-in-out;
+}
+
+.msg-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.msg-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: none;
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.msg {
+  display: flex;
+  gap: 12px;
+  animation: rise 0.25s ease-out;
+}
+
+.msg-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.msg-user {
+  justify-content: flex-end;
+}
+
+.msg-user .msg-text {
+  max-width: 75%;
+  padding: 10px 14px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 18px;
 }
 
 .main-composer {
