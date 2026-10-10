@@ -1768,3 +1768,131 @@ body.resizing .sidebar-handle::after {
     transition: none !important;
   }
 }
+
+/* Timers in the chat */
+
+.msg-agent-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.timers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 6px 6px 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.timer-done {
+  border-color: rgba(139, 156, 255, 0.5);
+  background: rgba(139, 156, 255, 0.14);
+}
+
+.timer-ring {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  transform: rotate(-90deg);
+}
+
+.timer-ring circle {
+  fill: none;
+  stroke-width: 3;
+}
+
+.timer-track {
+  stroke: var(--border);
+}
+
+.timer-progress {
+  stroke: var(--accent);
+  stroke-linecap: round;
+}
+
+/* Smooth between ticks only while counting down; a reset or restart jumps straight to its new place. */
+.timer-running .timer-progress {
+  transition: stroke-dashoffset 0.25s linear;
+}
+
+.timer-stopped .timer-progress,
+.timer-reset .timer-progress {
+  stroke: var(--faint);
+}
+
+.timer-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.timer-clock {
+  min-width: 42px;
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-stopped .timer-clock,
+.timer-reset .timer-clock {
+  color: var(--muted);
+}
+
+.timer-done .timer-clock {
+  color: var(--accent);
+}
+
+.timer-actions {
+  position: relative;
+  display: flex;
+  gap: 6px;
+}
+
+.timer-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.timer-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.timer-btn-main {
+  border-color: transparent;
+  background: var(--text);
+  color: #000000;
+}
+
+.timer-btn-main:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+.timer-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -121,6 +121,9 @@ ipcMain.handle('google:signIn', async () => {
 
 ipcMain.handle('google:cancel', () => cancelGoogle())
 
+// Clicking a notification (a timer ran out) brings the app forward.
+ipcMain.handle('app:focus', () => focusWindow())
+
 app.whenReady().then(() => {
   registerProtocol()
   createWindow()

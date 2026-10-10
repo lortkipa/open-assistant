@@ -149,3 +149,29 @@ export const CheckIcon = ({ size }: { size?: number }) => (
     <path d="m5 12.5 4.5 4.5L19 7.5" />
   </Icon>
 )
+
+export const PlayIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M7 5.5v13l11-6.5z" />
+  </Icon>
+)
+
+export const PauseIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M9 5.5v13M15 5.5v13" />
+  </Icon>
+)
+
+export const ResetIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+    <path d="M4.5 4.5v4h4" />
+  </Icon>
+)
+
+export const TimerIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <circle cx="12" cy="13.5" r="7" />
+    <path d="M12 10v3.5l2 2M10 3h4" />
+  </Icon>
+)

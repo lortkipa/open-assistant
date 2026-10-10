@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
-import type { Agent, Message } from '../agents'
+import type { Agent, Message, Timer } from '../agents'
 import { AgentIcon } from './AgentIcon'
 import { Markdown } from './Markdown'
+import { TimerCard } from './TimerCard'
+
+export type TimerControl = 'start' | 'stop' | 'reset'
 
 type Props = {
   agent: Agent
   messages: Message[]
+  timers: Timer[]
   typing: boolean
   onEditMessage: (index: number, text: string) => void
+  onTimer: (id: string, control: TimerControl) => void
 }
 
-export function Chat({ agent, messages, typing, onEditMessage }: Props) {
+export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer }: Props) {
   // Stable across renders, so finished messages don't re-render when the chat changes.
   const editRef = useRef(onEditMessage)
   editRef.current = onEditMessage
@@ -42,14 +47,49 @@ export function Chat({ agent, messages, typing, onEditMessage }: Props) {
       </header>
 
       <div className="chat-messages">
-        {messages.map((message, i) => (
+        {messages.map((message, i) => {
+          // Events (a timer ran out) are only for the agent to read; the timer itself shows it.
+          if (message.from === 'event') return null
           // A new speaker starts a new group, spaced from the one before.
-          <div key={i} className={`msg msg-${message.from}${messages[i - 1]?.from !== message.from ? ' first' : ''}`}>
-            <div className="msg-text">
-              {message.from === 'agent' ? <Markdown text={message.text} index={i} onEdit={edit} /> : message.text}
+          const previous = messages.findLast((m, j) => j < i && m.from !== 'event')
+          const className = `msg msg-${message.from}${previous?.from !== message.from ? ' first' : ''}`
+          if (message.from === 'user') {
+            return (
+              <div key={i} className={className}>
+                <div className="msg-text">{message.text}</div>
+              </div>
+            )
+          }
+          // The timers an agent made show under the message it made them with.
+          const created = (message.timers ?? [])
+            .filter((a) => a.action === 'create')
+            .map((a) => timers.find((t) => t.id === a.timer))
+            .filter((t) => t !== undefined)
+          return (
+            <div key={i} className={className}>
+              <div className="msg-agent-body">
+                {message.text && (
+                  <div className="msg-text">
+                    <Markdown text={message.text} index={i} onEdit={edit} />
+                  </div>
+                )}
+                {created.length > 0 && (
+                  <div className="timers">
+                    {created.map((timer) => (
+                      <TimerCard
+                        key={timer.id}
+                        timer={timer}
+                        onStart={() => onTimer(timer.id, 'start')}
+                        onStop={() => onTimer(timer.id, 'stop')}
+                        onReset={() => onTimer(timer.id, 'reset')}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         {typing && (
           <div className={`msg msg-agent${messages.at(-1)?.from !== 'agent' ? ' first' : ''}`}>
             <div className="msg-typing" aria-label={`${agent.name} is typing`}>

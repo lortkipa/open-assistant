@@ -6,6 +6,7 @@ const api: DesktopApi = {
   abort: (requestId) => ipcRenderer.invoke('api:abort', requestId),
   googleSignIn: () => ipcRenderer.invoke('google:signIn'),
   googleCancel: () => ipcRenderer.invoke('google:cancel'),
+  focus: () => ipcRenderer.invoke('app:focus'),
 }
 
 contextBridge.exposeInMainWorld('api', api)

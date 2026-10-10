@@ -2,10 +2,21 @@ import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { api, errorMessage, type User } from '../api'
 import { Sidebar } from '../components/Sidebar'
 import { Composer } from '../components/Composer'
-import { Chat } from '../components/Chat'
+import { Chat, type TimerControl } from '../components/Chat'
 import { NewAgentDialog } from '../components/NewAgentDialog'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import type { Agent, Message } from '../agents'
+import {
+  applyTimerActions,
+  finishTimer,
+  formatClock,
+  resetTimer,
+  startTimer,
+  stopTimer,
+  timeLeft,
+  type Agent,
+  type Message,
+  type Timer,
+} from '../agents'
 import { UploadIcon } from '../components/icons'
 
 // 20 keeps every image under Claude's full-size limit (stricter past 20); 25 MB keeps requests sane.
@@ -26,9 +37,11 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const editing = agents.find((a) => a.id === editingId)
   const deleting = agents.find((a) => a.id === deletingId)
-  // Read from reply loops, which outlive the render that started them.
+  // Read from reply loops and timers, which outlive the render that started them.
   const selectedRef = useRef(selectedId)
   selectedRef.current = selectedId
+  const agentsRef = useRef(agents)
+  agentsRef.current = agents
 
   const update = (id: string, changes: Partial<Agent>) =>
     setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, ...changes } : a)))
@@ -89,21 +102,29 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
     while (true) {
       const requestId = crypto.randomUUID()
       replies.current.set(id, requestId)
-      const messages = transcript.map(({ from, text }) => ({ from, text }))
-      const { status, data } = await api.request('POST', '/agents/reply', { agent: { name }, timeZone, messages }, requestId)
+      const messages = transcript.map(({ from, text, timers }) => ({ from, text, timers }))
+      const timers = (agentsRef.current.find((a) => a.id === id)?.timers ?? []).map(timerState)
+      const body = { agent: { name }, timeZone, messages, timers }
+      const { status, data } = await api.request('POST', '/agents/reply', body, requestId)
       if (replies.current.get(id) !== requestId) return
       if (status !== 200) {
         setNotice({ text: errorMessage(data) })
         break
       }
-      if (data.message) {
-        const message: Message = { from: 'agent', text: data.message, time: now() }
+      const current = agentsRef.current.find((a) => a.id === id)
+      if (!current) break
+      const applied = applyTimerActions(current.timers, data.timers ?? [])
+      if (data.message || applied.actions.length) {
+        const message: Message = { from: 'agent', text: data.message ?? '', time: now() }
+        if (applied.actions.length) message.timers = applied.actions
         transcript = [...transcript, message]
-        append(id, message)
+        setAgents((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, timers: applied.timers, messages: [...a.messages, message] } : a)),
+        )
         // A reply to an agent you've since left marks it unread.
         if (selectedRef.current !== id) update(id, { unread: true })
       }
-      if (!data.message || !data.more) break
+      if (!data.more || (!data.message && !applied.actions.length)) break
     }
     replies.current.delete(id)
     setTypingFor(id, false)
@@ -116,6 +137,58 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
     append(agent.id, message)
     reply(agent.id, agent.name, [...agent.messages, message])
   }
+  // The user runs a timer from its card. The agent sees the new state next time it replies.
+  const controlTimer = (id: string, timerId: string, control: TimerControl) => {
+    const change = control === 'start' ? startTimer : control === 'stop' ? stopTimer : resetTimer
+    setAgents((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, timers: a.timers.map((t) => (t.id === timerId ? change(t) : t)) } : a)),
+    )
+  }
+
+  // When a timer runs out: mark it done, tell the agent (which then texts the user) and show a notification.
+  // Returns whether any timer was due.
+  const finishDue = () => {
+    const at = Date.now()
+    let finished = false
+    for (const a of agentsRef.current) {
+      const due = a.timers.filter((t) => t.status === 'running' && t.endsAt <= at)
+      if (!due.length) continue
+      finished = true
+      const events: Message[] = due.map((t) => ({
+        from: 'event',
+        text: `Timer ${t.id} “${t.label}” (${formatClock(t.seconds * 1000)}) ran out.`,
+        time: now(),
+      }))
+      const transcript = [...a.messages, ...events]
+      const changes = { timers: a.timers.map((t) => (due.includes(t) ? finishTimer(t) : t)), messages: transcript }
+      update(a.id, changes)
+      // The reply below reads the timers before React re-renders; it must already see these as done.
+      agentsRef.current = agentsRef.current.map((x) => (x.id === a.id ? { ...x, ...changes } : x))
+      for (const t of due) {
+        const notification = new Notification(a.name, { body: `⏰ ${t.label}: time’s up` })
+        notification.onclick = () => {
+          select(a.id)
+          api.focus()
+        }
+      }
+      reply(a.id, a.name, transcript)
+    }
+    return finished
+  }
+
+  // Wake up for the next timer to run out, across all agents. Timeouts can fire a moment early;
+  // then nothing is due yet and no state changes, so `wake` schedules another try.
+  const [wake, setWake] = useState(0)
+  useEffect(() => {
+    const ends = agents.flatMap((a) => a.timers.filter((t) => t.status === 'running').map((t) => t.endsAt))
+    if (!ends.length) return
+    const t = setTimeout(
+      () => finishDue() || setWake((n) => n + 1),
+      Math.max(0, Math.min(...ends) - Date.now()),
+    )
+    return () => clearTimeout(t)
+  }, [agents, wake])
+
   // An object, so the same message shown again restarts its timer.
   const [notice, setNotice] = useState<{ text: string } | null>(null)
   // dragenter/dragleave fire for every child crossed; count them to know when the drag really left.
@@ -217,7 +290,7 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
           onClose={() => setCreating(false)}
           onCreate={({ name, shape }) => {
             const id = crypto.randomUUID()
-            setAgents((prev) => [...prev, { id, name, shape, messages: [] }])
+            setAgents((prev) => [...prev, { id, name, shape, messages: [], timers: [] }])
             setSelectedId(id)
             setCreating(false)
           }}
@@ -230,8 +303,10 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
               key={agent.id}
               agent={agent}
               messages={agent.messages}
+              timers={agent.timers}
               typing={typing.has(agent.id)}
               onEditMessage={(index, text) => editMessage(agent.id, index, text)}
+              onTimer={(timerId, control) => controlTimer(agent.id, timerId, control)}
             />
           )}
         </div>
@@ -264,5 +339,14 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
     </div>
   )
 }
+
+// What the agent is told about a timer.
+const timerState = (t: Timer) => ({
+  id: t.id,
+  label: t.label,
+  seconds: t.seconds,
+  status: t.status,
+  remaining: Math.ceil(timeLeft(t) / 1000),
+})
 
 const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })

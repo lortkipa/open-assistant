@@ -2,8 +2,17 @@ import OpenAI from 'openai'
 import type { EasyInputMessage, Response } from 'openai/resources/responses/responses'
 import { systemPrompt, type PromptContext } from './prompt.ts'
 
-export type ChatMessage = { from: 'user' | 'agent'; text: string }
-export type Next = { message: string | null; more: boolean }
+export type TimerAction = {
+  action: 'create' | 'start' | 'stop' | 'reset'
+  timer: string | null
+  label: string | null
+  seconds: number | null
+}
+// 'event' is something that happened in the app, like a timer running out.
+export type ChatMessage = { from: 'user' | 'agent' | 'event'; text: string; timers?: TimerAction[] }
+export type Next = { message: string | null; more: boolean; timers: TimerAction[] }
+
+export const MAX_TIMER_SECONDS = 24 * 60 * 60
 
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna'
 
@@ -14,16 +23,20 @@ export const aiConfigured = () => !!process.env.OPENAI_API_KEY
 // answers only the last one, so a run of user messages goes in as a single turn.
 // The agent's own texts stay separate, in the JSON shape it replies in: given plain text,
 // it often doesn't recognize them as already sent and repeats itself.
+// Events (a timer ran out) come from the app, not the user, so they go in as developer turns.
 function toInput(messages: ChatMessage[]): EasyInputMessage[] {
   const input: (EasyInputMessage & { content: string })[] = []
   messages.forEach((m, i) => {
     const last = input.at(-1)
     if (m.from === 'user' && last?.role === 'user') last.content += `\n${m.text}`
     else if (m.from === 'user') input.push({ role: 'user', content: m.text })
+    else if (m.from === 'event') input.push({ role: 'developer', content: m.text })
     else {
       // Another agent message followed, or this is the one the loop is continuing from.
-      const more = messages[i + 1]?.from !== 'user'
-      input.push({ role: 'assistant', content: JSON.stringify({ message: m.text, more }), phase: 'final_answer' })
+      const next = messages[i + 1]
+      const more = !next || next.from === 'agent'
+      const content = JSON.stringify({ message: m.text || null, more, timers: m.timers ?? [] })
+      input.push({ role: 'assistant', content, phase: 'final_answer' })
     }
   })
   return input
@@ -38,11 +51,21 @@ function parseFinal(response: Response): Next | null {
   try {
     const parsed = JSON.parse(text)
     if (typeof parsed?.more !== 'boolean' || (parsed.message !== null && typeof parsed.message !== 'string')) return null
+    if (!Array.isArray(parsed.timers)) return null
     const message = parsed.message?.trim() || null
-    return { message, more: message !== null && parsed.more }
+    const timers = parsed.timers.filter(validAction)
+    return { message, more: (message !== null || timers.length > 0) && parsed.more, timers }
   } catch {
     return null
   }
+}
+
+// Actions missing what they need are dropped rather than failing the whole reply.
+function validAction(a: any): a is TimerAction {
+  if (a?.action === 'create') {
+    return typeof a.label === 'string' && !!a.label.trim() && Number.isInteger(a.seconds) && a.seconds >= 1 && a.seconds <= MAX_TIMER_SECONDS
+  }
+  return ['start', 'stop', 'reset'].includes(a?.action) && typeof a.timer === 'string'
 }
 
 async function call(ctx: PromptContext, messages: ChatMessage[], signal: AbortSignal) {
@@ -64,8 +87,22 @@ async function call(ctx: PromptContext, messages: ChatMessage[], signal: AbortSi
             properties: {
               message: { type: ['string', 'null'] },
               more: { type: 'boolean' },
+              timers: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    action: { type: 'string', enum: ['create', 'start', 'stop', 'reset'] },
+                    timer: { type: ['string', 'null'] },
+                    label: { type: ['string', 'null'] },
+                    seconds: { type: ['integer', 'null'] },
+                  },
+                  required: ['action', 'timer', 'label', 'seconds'],
+                  additionalProperties: false,
+                },
+              },
             },
-            required: ['message', 'more'],
+            required: ['message', 'more', 'timers'],
             additionalProperties: false,
           },
         },

@@ -6,4 +6,5 @@ export type DesktopApi = {
   abort: (requestId: string) => Promise<void>
   googleSignIn: () => Promise<ApiResult>
   googleCancel: () => Promise<void>
+  focus: () => Promise<void>
 }
