@@ -9,6 +9,8 @@ export type Agent = {
   name: string
   shape: Shape
   messages: Message[]
+  pinned?: boolean
+  unread?: boolean
 }
 
 const REPLIES = [

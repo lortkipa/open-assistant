@@ -25,7 +25,7 @@ Open Assistant is an open-source, 24/7 AI agent designed to run in the cloud, ev
 
 ## Project status
 
-Open Assistant is in early development. Right now it has a desktop app (Linux, macOS, Windows) with email-code and Google sign-in, plus the server behind it. After sign-in you land on the main page: a resizable sidebar and a message box that takes text and file attachments. The agent list starts empty; the "+" button adds an agent with a character icon and a name you choose. Agents are kept only in memory for now and answer with canned replies.
+Open Assistant is in early development. Right now it has a desktop app (Linux, macOS, Windows) with email-code and Google sign-in, plus the server behind it. After sign-in you land on the main page: a resizable sidebar and a message box that takes text and file attachments. The agent list starts empty; the "+" button adds an agent with a character icon and a name you choose. Right-clicking an agent lets you pin it to the top, mark it read or unread (a reply that arrives while you are elsewhere marks it unread), edit it, or delete it. Agents are kept only in memory for now and answer with canned replies.
 
 ## Project layout
 

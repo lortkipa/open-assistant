@@ -3,8 +3,9 @@ import type { User } from '../api'
 import type { Agent } from '../agents'
 import { AccountMenu } from './AccountMenu'
 import { AgentIcon } from './AgentIcon'
+import { AgentMenu } from './AgentMenu'
 import { Avatar } from './Avatar'
-import { PlusIcon, SearchIcon } from './icons'
+import { PinIcon, PlusIcon, SearchIcon } from './icons'
 
 const RAIL = 64
 const MIN = 220
@@ -35,12 +36,21 @@ type Props = {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onNew: () => void
+  onUpdate: (id: string, changes: Partial<Agent>) => void
+  onEdit: (id: string) => void
+  onDelete: (id: string) => void
 }
 
-export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew }: Props) {
+export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew, onUpdate, onEdit, onDelete }: Props) {
   const [layout, setLayout] = useState(loadLayout)
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = useCallback(() => setMenuOpen(false), [])
+  // The right-clicked agent and where its menu opens.
+  const [agentMenu, setAgentMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const closeAgentMenu = useCallback(() => setAgentMenu(null), [])
+  const menuAgent = agents.find((a) => a.id === agentMenu?.id)
+  // Pinned agents first; otherwise creation order.
+  const sorted = [...agents.filter((a) => a.pinned), ...agents.filter((a) => !a.pinned)]
   const [dragging, setDragging] = useState(false)
   // Briefly animate the jump to and from the rail, even mid-drag.
   const [snapping, setSnapping] = useState(false)
@@ -118,19 +128,49 @@ export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew
       </div>
 
       <nav className="sidebar-body agent-list" aria-label="Agents">
-        {agents.map((agent) => (
+        {sorted.map((agent) => (
           <button
             key={agent.id}
-            className="agent-item"
+            className={`agent-item${agent.unread ? ' unread' : ''}${agentMenu?.id === agent.id ? ' menu-open' : ''}`}
             aria-current={agent.id === selectedId ? 'page' : undefined}
             title={collapsed ? agent.name : undefined}
             onClick={() => onSelect(agent.id)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setAgentMenu({ id: agent.id, x: e.clientX, y: e.clientY })
+            }}
           >
-            <AgentIcon shape={agent.shape} size={28} />
-            {!collapsed && <span className="agent-name">{agent.name}</span>}
+            <span className="agent-item-icon">
+              <AgentIcon shape={agent.shape} size={28} />
+              {collapsed && agent.unread && <span className="unread-dot" aria-label="Unread" />}
+            </span>
+            {!collapsed && (
+              <>
+                <span className="agent-name">{agent.name}</span>
+                {agent.pinned && (
+                  <span className="agent-pin" aria-label="Pinned">
+                    <PinIcon size={14} />
+                  </span>
+                )}
+                {agent.unread && <span className="unread-dot" aria-label="Unread" />}
+              </>
+            )}
           </button>
         ))}
       </nav>
+
+      {menuAgent && agentMenu && (
+        <AgentMenu
+          agent={menuAgent}
+          x={agentMenu.x}
+          y={agentMenu.y}
+          onClose={closeAgentMenu}
+          onTogglePin={() => onUpdate(menuAgent.id, { pinned: !menuAgent.pinned })}
+          onToggleUnread={() => onUpdate(menuAgent.id, { unread: !menuAgent.unread })}
+          onEdit={() => onEdit(menuAgent.id)}
+          onDelete={() => onDelete(menuAgent.id)}
+        />
+      )}
 
       {menuOpen && <AccountMenu onClose={closeMenu} onSignedOut={onSignedOut} />}
       <button

@@ -4,6 +4,7 @@ import { Sidebar } from '../components/Sidebar'
 import { Composer } from '../components/Composer'
 import { Chat } from '../components/Chat'
 import { NewAgentDialog } from '../components/NewAgentDialog'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { fakeReply, type Agent, type Message } from '../agents'
 import { UploadIcon } from '../components/icons'
 
@@ -21,6 +22,28 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
   const [creating, setCreating] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const agent = agents.find((a) => a.id === selectedId)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const editing = agents.find((a) => a.id === editingId)
+  const deleting = agents.find((a) => a.id === deletingId)
+  // Read from the reply timer, which outlives the render that started it.
+  const selectedRef = useRef(selectedId)
+  selectedRef.current = selectedId
+
+  const update = (id: string, changes: Partial<Agent>) =>
+    setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, ...changes } : a)))
+
+  // Opening an agent reads it.
+  const select = (id: string | null) => {
+    setSelectedId(id)
+    if (id) update(id, { unread: false })
+  }
+
+  const remove = (id: string) => {
+    setAgents((prev) => prev.filter((a) => a.id !== id))
+    setSent(({ [id]: _, ...rest }) => rest)
+    if (selectedId === id) setSelectedId(null)
+  }
   // Messages sent this session, per agent.
   const [sent, setSent] = useState<Record<string, Message[]>>({})
   // Agents currently "typing" a fake reply.
@@ -37,6 +60,8 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
     setTyping((prev) => new Set(prev).add(id))
     setTimeout(() => {
       append(id, { from: 'agent', text: fakeReply(text), time: now() })
+      // A reply to an agent you've since left marks it unread.
+      if (selectedRef.current !== id) update(id, { unread: true })
       setTyping((prev) => {
         const next = new Set(prev)
         next.delete(id)
@@ -111,9 +136,35 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
         onSignedOut={onSignedOut}
         agents={agents}
         selectedId={selectedId}
-        onSelect={setSelectedId}
+        onSelect={select}
         onNew={() => setCreating(true)}
+        onUpdate={update}
+        onEdit={setEditingId}
+        onDelete={setDeletingId}
       />
+      {editing && (
+        <NewAgentDialog
+          agent={editing}
+          onClose={() => setEditingId(null)}
+          onCreate={(changes) => {
+            update(editing.id, changes)
+            setEditingId(null)
+          }}
+        />
+      )}
+      {deleting && (
+        <ConfirmDialog
+          title="Delete agent?"
+          confirmLabel="Delete"
+          onClose={() => setDeletingId(null)}
+          onConfirm={() => {
+            remove(deleting.id)
+            setDeletingId(null)
+          }}
+        >
+          <strong>{deleting.name}</strong> and its messages will be deleted. This can’t be undone.
+        </ConfirmDialog>
+      )}
       {creating && (
         <NewAgentDialog
           onClose={() => setCreating(false)}

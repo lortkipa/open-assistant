@@ -6,14 +6,16 @@ import { PencilIcon } from './icons'
 const MAX_NAME = 40
 
 type Props = {
+  // Given, the dialog edits this agent instead of creating one.
+  agent?: { name: string; shape: Shape }
   onCreate: (agent: { name: string; shape: Shape }) => void
   onClose: () => void
 }
 
-// A big character up top (click it to pick another) and a name. Opens with a random character.
-export function NewAgentDialog({ onCreate, onClose }: Props) {
-  const [shape, setShape] = useState<Shape>(() => SHAPES[Math.floor(Math.random() * SHAPES.length)])
-  const [name, setName] = useState('')
+// A big character up top (click it to pick another) and a name. A new agent opens with a random character.
+export function NewAgentDialog({ agent, onCreate, onClose }: Props) {
+  const [shape, setShape] = useState<Shape>(() => agent?.shape ?? SHAPES[Math.floor(Math.random() * SHAPES.length)])
+  const [name, setName] = useState(agent?.name ?? '')
   const [picking, setPicking] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<HTMLButtonElement>(null)
@@ -50,7 +52,7 @@ export function NewAgentDialog({ onCreate, onClose }: Props) {
     <div className="dialog-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog" role="dialog" aria-modal="true" aria-labelledby="new-agent-title" onSubmit={submit}>
         <h2 id="new-agent-title" className="dialog-title">
-          New agent
+          {agent ? 'Edit agent' : 'New agent'}
         </h2>
 
         <div className="avatar-area">
@@ -106,7 +108,7 @@ export function NewAgentDialog({ onCreate, onClose }: Props) {
             Cancel
           </Button>
           <Button type="submit" disabled={!trimmed}>
-            Create
+            {agent ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>
