@@ -4,26 +4,47 @@ import {
   useRef,
   useState,
   type ClipboardEvent,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type WheelEvent,
 } from 'react'
 import { ArrowUpIcon, CloseIcon, FileIcon, PlusIcon } from './icons'
+import type { Mark } from './ImageEditor'
+
+// A file in the composer. It uploads as soon as it's attached; sending only needs its id.
+export type Draft = {
+  key: number
+  // As attached.
+  original: File
+  // What gets sent: the original, or a copy with the user's marks drawn in.
+  file: File
+  marks: Mark[]
+  // Object URLs, for images.
+  originalUrl: string | null
+  preview: string | null
+  status: 'uploading' | 'done' | 'error'
+  attachmentId: string | null
+}
 
 type Props = {
-  files: File[]
+  drafts: Draft[]
   onAddFiles: (files: File[]) => void
-  onRemoveFile: (index: number) => void
-  onSubmit: (text: string, files: File[]) => void
+  onRemoveDraft: (key: number) => void
+  onOpenDraft: (key: number) => void
+  onRetryDraft: (key: number) => void
+  onSubmit: (text: string) => void
   // Shown under the box, e.g. why some files weren't attached.
   notice?: string
   placeholder?: string
 }
 
 export function Composer({
-  files,
+  drafts,
   onAddFiles,
-  onRemoveFile,
+  onRemoveDraft,
+  onOpenDraft,
+  onRetryDraft,
   onSubmit,
   notice,
   placeholder = 'Message Open Assistant',
@@ -38,7 +59,9 @@ export function Composer({
   const mirrorRef = useRef<HTMLDivElement>(null)
   const pickerRef = useRef<HTMLInputElement>(null)
 
-  const canSend = text.trim().length > 0 || files.length > 0
+  // Like Claude: files must finish uploading before the message can go.
+  const uploaded = drafts.every((d) => d.status === 'done')
+  const canSend = (text.trim().length > 0 || drafts.length > 0) && uploaded
 
   useEffect(() => {
     const row = rowRef.current!
@@ -63,7 +86,7 @@ export function Composer({
 
   const submit = () => {
     if (!canSend) return
-    onSubmit(text.trim(), files)
+    onSubmit(text.trim())
     setText('')
     inputRef.current!.focus()
   }
@@ -101,10 +124,16 @@ export function Composer({
           {notice}
         </p>
       )}
-      {files.length > 0 && (
+      {drafts.length > 0 && (
         <div className="composer-files" onMouseDown={focusInput} onWheel={scrollSideways}>
-          {files.map((file, i) => (
-            <Attachment key={fileKey(file)} file={file} onRemove={() => onRemoveFile(i)} />
+          {drafts.map((draft) => (
+            <Attachment
+              key={draft.key}
+              draft={draft}
+              onOpen={() => onOpenDraft(draft.key)}
+              onRetry={() => onRetryDraft(draft.key)}
+              onRemove={() => onRemoveDraft(draft.key)}
+            />
           ))}
         </div>
       )}
@@ -135,7 +164,7 @@ export function Composer({
           type="button"
           className="composer-send"
           aria-label="Send"
-          title="Send"
+          title={uploaded ? 'Send' : 'Waiting for files to upload'}
           disabled={!canSend}
           onClick={submit}
         >
@@ -162,46 +191,64 @@ export function Composer({
   )
 }
 
-// Stable keys, so removing one file doesn't remount (and re-read) the ones after it.
-const fileKeys = new WeakMap<File, number>()
-let nextKey = 0
-function fileKey(file: File) {
-  if (!fileKeys.has(file)) fileKeys.set(file, nextKey++)
-  return fileKeys.get(file)!
-}
-
-function Attachment({ file, onRemove }: { file: File; onRemove: () => void }) {
-  const [preview, setPreview] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!file.type.startsWith('image/')) return
-    const url = URL.createObjectURL(file)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
-
+// A file's tile: images show themselves, other files their name and type.
+function Attachment({ draft, onOpen, onRetry, onRemove }: { draft: Draft; onOpen: () => void; onRetry: () => void; onRemove: () => void }) {
+  const { file, preview, status } = draft
   return (
-    <div className="attachment" title={file.name}>
-      {preview ? (
-        <img className="attachment-thumb" src={preview} alt="" />
-      ) : (
-        <span className="attachment-icon">
-          <FileIcon size={18} />
-        </span>
-      )}
-      <span className="attachment-meta">
-        <span className="attachment-name">{file.name}</span>
-        <span className="attachment-size">{formatSize(file.size)}</span>
-      </span>
+    <div className={`attachment ${status}`} title={status === 'error' ? `${file.name} didn’t upload. Click to retry.` : file.name}>
+      <button
+        type="button"
+        className="attachment-body"
+        aria-label={status === 'error' ? `Retry uploading ${file.name}` : preview ? `Open ${file.name}` : file.name}
+        onClick={status === 'error' ? onRetry : preview ? onOpen : undefined}
+      >
+        <FilePreview name={file.name} size={file.size} src={preview} />
+        {status === 'uploading' && (
+          <span className="attachment-status">
+            <span className="spinner" />
+          </span>
+        )}
+        {status === 'error' && <span className="attachment-status error">Retry</span>}
+      </button>
       <button type="button" className="attachment-remove" aria-label={`Remove ${file.name}`} onClick={onRemove}>
-        <CloseIcon size={14} />
+        <CloseIcon size={12} />
       </button>
     </div>
   )
 }
 
-function formatSize(bytes: number) {
+// Tints for the file icon, by kind of file.
+const FILE_KINDS: [RegExp, string][] = [
+  [/^pdf$/, '#f87171'],
+  [/^(json|jsonc|csv|tsv|ya?ml|toml|xml|xlsx?|ods|sql|db|sqlite)$/, '#fbbf24'],
+  [/^(docx?|odt|rtf|txt|md|markdown|pages|tex|epub)$/, '#60a5fa'],
+  [/^(zip|tar|gz|tgz|bz2|xz|7z|rar)$/, '#c084fc'],
+  [/^(pptx?|odp|key)$/, '#fb923c'],
+  [/^(mp3|wav|flac|ogg|m4a|mp4|mov|mkv|webm|avi)$/, '#f472b6'],
+  [/^(ts|tsx|js|jsx|mjs|cjs|py|rb|go|rs|java|kt|swift|c|h|cc|cpp|hpp|cs|php|sh|lua|dart|vue|svelte|html|css|scss)$/, '#8b9cff'],
+]
+
+export function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+// The inside of a file tile, shared with the chat: images show themselves; other files a card with
+// a tinted icon, the name (the extension goes on the last line, with the size) and the size.
+export function FilePreview({ name, size, src }: { name: string; size: number; src: string | null }) {
+  if (src) return <img className="attachment-thumb" src={src} alt="" draggable={false} />
+  const dot = name.lastIndexOf('.')
+  const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
+  const base = dot > 0 ? name.slice(0, dot) : name
+  const color = FILE_KINDS.find(([re]) => re.test(ext))?.[1] ?? 'var(--muted)'
+  return (
+    <span className="file-card" style={{ '--file-color': color } as CSSProperties}>
+      <span className="file-card-icon">
+        <FileIcon size={18} />
+      </span>
+      <span className="file-card-name">{base}</span>
+      <span className="file-card-meta">{[ext.slice(0, 10).toUpperCase(), formatSize(size)].filter(Boolean).join(' · ')}</span>
+    </span>
+  )
 }

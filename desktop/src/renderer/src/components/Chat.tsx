@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
-import type { Agent, Message, Timer } from '../agents'
+import { attachmentUrl, isImage, type Agent, type Attachment, type Message, type Timer } from '../agents'
 import { AgentIcon } from './AgentIcon'
+import { FilePreview } from './Composer'
 import { Markdown } from './Markdown'
 import { TimerCard } from './TimerCard'
 
@@ -13,9 +14,10 @@ type Props = {
   typing: boolean
   onEditMessage: (id: string, text: string) => void
   onTimer: (id: string, control: TimerControl) => void
+  onOpenAttachment: (attachment: Attachment) => void
 }
 
-export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer }: Props) {
+export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer, onOpenAttachment }: Props) {
   // Stable across renders, so finished messages don't re-render when the chat changes.
   const editRef = useRef(onEditMessage)
   editRef.current = onEditMessage
@@ -56,7 +58,25 @@ export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer }
           if (message.from === 'user') {
             return (
               <div key={message.id} className={className}>
-                <div className="msg-text">{message.text}</div>
+                <div className="msg-user-body">
+                  {message.attachments && (
+                    <div className="msg-attachments">
+                      {message.attachments.map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          className={`msg-attachment${isImage(a.type) ? ' image' : ''}`}
+                          title={a.name}
+                          aria-label={`Open ${a.name}`}
+                          onClick={() => onOpenAttachment(a)}
+                        >
+                          <FilePreview name={a.name} size={a.size} src={isImage(a.type) ? attachmentUrl(a.id) : null} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {message.text && <div className="msg-text">{message.text}</div>}
+                </div>
               </div>
             )
           }

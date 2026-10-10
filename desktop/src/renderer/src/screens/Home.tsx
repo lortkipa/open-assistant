@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { api, errorMessage, type User } from '../api'
 import { Sidebar } from '../components/Sidebar'
-import { Composer } from '../components/Composer'
+import { Composer, type Draft } from '../components/Composer'
+import { flatten, ImageEditor, type Mark } from '../components/ImageEditor'
 import { Chat, type TimerControl } from '../components/Chat'
 import { NewAgentDialog } from '../components/NewAgentDialog'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { fromWire, type Agent, type Message, type WireTimer } from '../agents'
+import { fromWire, isImage, type Agent, type Attachment, type Message, type WireTimer } from '../agents'
 import { UploadIcon } from '../components/icons'
 
 // 20 keeps every image under Claude's full-size limit (stricter past 20); 25 MB keeps requests sane.
@@ -13,6 +14,18 @@ const MAX_FILES = 20
 const MAX_FILE_SIZE = 25 * 1024 * 1024
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files')
+
+// An image open over the app, to look at and draw on.
+type Overlay = { src: string; name: string; marks: Mark[]; onClose: (marks: Mark[]) => void }
+
+let nextDraftKey = 0
+
+// "shot.gif" marked up comes back as PNG: "shot.png".
+const renamed = (name: string, type: string) => {
+  const ext = type === 'image/jpeg' ? null : type.split('/')[1]
+  if (!ext || name.toLowerCase().endsWith(`.${ext}`)) return name
+  return `${name.replace(/\.[^.]*$/, '')}.${ext}`
+}
 
 type WireAgent = Omit<Agent, 'timers' | 'messages'> & { messages?: Message[]; timers?: WireTimer[] }
 type AgentChanges = Partial<Pick<Agent, 'name' | 'shape' | 'pinned' | 'unread'>>
@@ -26,7 +39,10 @@ const fromWireAgent = ({ messages = [], timers = [], ...agent }: WireAgent): Age
 // Agents, chats and timers live on the server, which runs replies and timers even while the app is
 // closed. This screen loads them, follows live updates, and sends the user's actions back.
 export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => void }) {
-  const [files, setFiles] = useState<File[]>([])
+  const [drafts, setDrafts] = useState<Draft[]>([])
+  const draftsRef = useRef(drafts)
+  draftsRef.current = drafts
+  const [overlay, setOverlay] = useState<Overlay | null>(null)
   const [dropping, setDropping] = useState(false)
   const [agents, setAgents] = useState<Agent[]>([])
   const [creating, setCreating] = useState(false)
@@ -113,11 +129,11 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
   }
 
   // The server cancels a reply in flight, and the agent starts over with the whole chat.
-  const send = async (text: string, attached: File[]) => {
+  // Files are already uploaded (the composer waits for them); the message claims them by id.
+  const send = async (text: string, attached: Draft[]) => {
     if (!agent) return
-    const names = attached.map((file) => `📎 ${file.name}`).join('\n')
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    const body = { text: [text, names].filter(Boolean).join('\n\n'), timeZone }
+    const body = { text, timeZone, attachmentIds: attached.map((d) => d.attachmentId!) }
     const { status, data } = await api.request('POST', `/agents/${agent.id}/messages`, body)
     if (status !== 200) return fail(data)
     addMessage(agent.id, data.message)
@@ -205,15 +221,125 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
     return () => clearTimeout(t)
   }, [notice])
 
-  const addFiles = (added: File[]) => {
-    const fitting = added.filter((file) => file.size <= MAX_FILE_SIZE)
-    const room = MAX_FILES - files.length
+  const patchDraft = (key: number, change: Partial<Draft>) =>
+    setDrafts((prev) => prev.map((d) => (d.key === key ? { ...d, ...change } : d)))
+
+  // Uploads what the draft sends now. A newer version (marked up again meanwhile) wins.
+  const upload = async (key: number, file: File) => {
+    patchDraft(key, { file, status: 'uploading', attachmentId: null })
+    const { status, data } = await api.upload(file.name, file.type, await file.arrayBuffer())
+    const current = draftsRef.current.find((d) => d.key === key)
+    if (current?.file !== file) return
+    if (status === 200) patchDraft(key, { status: 'done', attachmentId: data.attachment.id })
+    else {
+      patchDraft(key, { status: 'error' })
+      fail(data)
+    }
+  }
+
+  const dispose = (draft: Draft) => {
+    if (draft.preview && draft.preview !== draft.originalUrl) URL.revokeObjectURL(draft.preview)
+    if (draft.originalUrl) URL.revokeObjectURL(draft.originalUrl)
+  }
+
+  const removeDraft = (key: number) => {
+    const draft = draftsRef.current.find((d) => d.key === key)
+    if (draft) dispose(draft)
+    setNotice(null)
+    setDrafts((prev) => prev.filter((d) => d.key !== key))
+  }
+
+  // Marks drawn on a draft image: send a copy with them drawn in (or the original again, if none).
+  const markDraft = async (key: number, marks: Mark[]) => {
+    const draft = draftsRef.current.find((d) => d.key === key)
+    if (!draft || !draft.originalUrl) return
+    let file = draft.original
+    if (marks.length) {
+      const blob = await flatten(draft.originalUrl, draft.original.type, marks)
+      file = new File([blob], renamed(draft.original.name, blob.type), { type: blob.type })
+      if (file.size > MAX_FILE_SIZE) {
+        setNotice({ text: 'The marked-up image is over 25 MB.' })
+        if (!draft.attachmentId) patchDraft(key, { status: 'error' })
+        return
+      }
+    }
+    if (draft.preview && draft.preview !== draft.originalUrl) URL.revokeObjectURL(draft.preview)
+    const preview = marks.length ? URL.createObjectURL(file) : draft.originalUrl
+    patchDraft(key, { marks, preview })
+    upload(key, file)
+  }
+
+  const addDrafts = (added: { file: File; originalUrl?: string; marks?: Mark[] }[]) => {
+    const fitting = added.filter(({ file }) => file.size <= MAX_FILE_SIZE)
+    const room = MAX_FILES - draftsRef.current.length
     const accepted = fitting.slice(0, Math.max(0, room))
     const notes: string[] = []
     if (fitting.length < added.length) notes.push('Files must be 25 MB or smaller.')
     if (accepted.length < fitting.length) notes.push(`You can attach up to ${MAX_FILES} files.`)
     setNotice(notes.length ? { text: notes.join(' ') } : null)
-    if (accepted.length) setFiles([...files, ...accepted])
+    for (const { originalUrl } of added.filter((a) => !accepted.includes(a))) {
+      if (originalUrl) URL.revokeObjectURL(originalUrl)
+    }
+    const created = accepted.map(({ file, originalUrl }): Draft => {
+      const url = originalUrl ?? (file.type.startsWith('image/') ? URL.createObjectURL(file) : null)
+      return {
+        key: nextDraftKey++,
+        original: file,
+        file,
+        marks: [],
+        originalUrl: url,
+        preview: url,
+        status: 'uploading',
+        attachmentId: null,
+      }
+    })
+    if (!created.length) return
+    draftsRef.current = [...draftsRef.current, ...created]
+    setDrafts(draftsRef.current)
+    created.forEach((draft, i) => {
+      const marks = accepted[i].marks ?? []
+      if (marks.length) markDraft(draft.key, marks)
+      else upload(draft.key, draft.file)
+    })
+  }
+
+  const addFiles = (added: File[]) => addDrafts(added.map((file) => ({ file })))
+
+  // Clicking a draft image opens it, ready to draw on. Leaving with changed marks re-uploads it.
+  const openDraft = (key: number) => {
+    const draft = draftsRef.current.find((d) => d.key === key)
+    if (!draft?.originalUrl || !isImage(draft.original.type)) return
+    setOverlay({
+      src: draft.originalUrl,
+      name: draft.original.name,
+      marks: draft.marks,
+      onClose: (marks) => {
+        setOverlay(null)
+        if (JSON.stringify(marks) !== JSON.stringify(draft.marks)) markDraft(key, marks)
+      },
+    })
+  }
+
+  // An image already in the chat. Drawing on it attaches a marked-up copy to the next message.
+  const openSent = async (attachment: Attachment) => {
+    const bytes = await api.readAttachment(attachment.id)
+    if (!bytes) return fail({ error: 'not_found' })
+    const file = new File([bytes], attachment.name, { type: attachment.type })
+    const url = URL.createObjectURL(file)
+    setOverlay({
+      src: url,
+      name: attachment.name,
+      marks: [],
+      onClose: (marks) => {
+        setOverlay(null)
+        if (marks.length) addDrafts([{ file, originalUrl: url, marks }])
+        else URL.revokeObjectURL(url)
+      },
+    })
+  }
+
+  const openDocument = async (attachment: Attachment) => {
+    if (!(await api.openAttachment(attachment.id, attachment.name))) setNotice({ text: `Couldn’t open ${attachment.name}.` })
   }
 
   const onDragEnter = (e: DragEvent) => {
@@ -292,27 +418,35 @@ export function Home({ user, onSignedOut }: { user: User; onSignedOut: () => voi
               timers={agent.timers}
               typing={typing.has(agent.id)}
               onEditMessage={(messageId, text) => editMessage(agent.id, messageId, text)}
+              onOpenAttachment={(a) => (isImage(a.type) ? openSent(a) : openDocument(a))}
               onTimer={(timerId, control) => controlTimer(agent.id, timerId, control)}
             />
           )}
         </div>
         <div className="main-composer">
           <Composer
-            files={files}
+            drafts={drafts}
             onAddFiles={addFiles}
-            onRemoveFile={(index) => {
-              setNotice(null)
-              setFiles((prev) => prev.filter((_, i) => i !== index))
+            onRemoveDraft={removeDraft}
+            onOpenDraft={openDraft}
+            onRetryDraft={(key) => {
+              const draft = draftsRef.current.find((d) => d.key === key)
+              if (draft) upload(key, draft.file)
             }}
             notice={notice?.text}
             placeholder={agent && `Message ${agent.name}`}
-            onSubmit={(text, attached) => {
+            onSubmit={(text) => {
+              const sent = draftsRef.current
               setNotice(null)
-              setFiles([])
-              send(text, attached)
+              setDrafts([])
+              sent.forEach(dispose)
+              send(text, sent)
             }}
           />
         </div>
+        {overlay && (
+          <ImageEditor src={overlay.src} name={overlay.name} marks={overlay.marks} onClose={overlay.onClose} />
+        )}
         {dropping && (
           <div className="drop-overlay">
             <div className="drop-card">

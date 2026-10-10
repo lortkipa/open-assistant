@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { sql, type User } from '../db.ts'
 import { requireUser } from '../auth.ts'
+import { deleteOpenAiFiles } from '../agents/attachments.ts'
 
 export const me = new Hono<{ Variables: { user: User; tokenHash: string } }>()
 
@@ -21,6 +22,9 @@ me.patch('/', async (c) => {
 })
 
 me.delete('/', async (c) => {
+  const [files] = await sql<{ ids: string[] | null }[]>`
+    select array_agg(openai_file_id) as ids from attachments where user_id = ${c.get('user').id} and openai_file_id is not null`
   await sql`delete from users where id = ${c.get('user').id}`
+  deleteOpenAiFiles(files?.ids ?? [])
   return c.json({ ok: true })
 })

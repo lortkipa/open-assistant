@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
-import type { EasyInputMessage, Response } from 'openai/resources/responses/responses'
+import type { EasyInputMessage, Response, ResponseInputContent } from 'openai/resources/responses/responses'
+import type { ModelAttachment } from './attachments.ts'
 import { MAX_TIMER_SECONDS, systemPrompt, type PromptContext } from './prompt.ts'
 
 export type TimerAction = {
@@ -9,13 +10,40 @@ export type TimerAction = {
   seconds: number | null
 }
 // 'event' is something that happened in the app, like a timer running out.
-export type ChatMessage = { from: 'user' | 'agent' | 'event'; text: string; timers?: TimerAction[] }
+export type ChatMessage = {
+  from: 'user' | 'agent' | 'event'
+  text: string
+  timers?: TimerAction[]
+  attachments?: ModelAttachment[]
+}
 export type Next = { message: string | null; more: boolean; timers: TimerAction[] }
 
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna'
 
 let client: OpenAI | undefined
 export const aiConfigured = () => !!process.env.OPENAI_API_KEY
+export const openai = () => (client ??= new OpenAI())
+
+const kb = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`)
+
+// A user message with its attachments, each introduced by name so the agent can refer to it.
+function userParts(m: ChatMessage): ResponseInputContent[] {
+  const parts: ResponseInputContent[] = m.text ? [{ type: 'input_text', text: m.text }] : []
+  for (const a of m.attachments ?? []) {
+    if (a.kind === 'other') {
+      parts.push({ type: 'input_text', text: `[Attached file: ${a.name} (${a.type || 'unknown type'}, ${kb(a.size)}). Its contents can't be read here, only its name.]` })
+    } else if (a.kind === 'image') {
+      parts.push({ type: 'input_text', text: `[Attached image: ${a.name}]` })
+      parts.push({ type: 'input_image', file_id: a.fileId, detail: 'auto' })
+    } else if (a.kind === 'pdf') {
+      parts.push({ type: 'input_text', text: `[Attached PDF: ${a.name}]` })
+      parts.push({ type: 'input_file', file_id: a.fileId })
+    } else {
+      parts.push({ type: 'input_text', text: `[Attached file: ${a.name}]\n\`\`\`\`\n${a.text}\n\`\`\`\`` })
+    }
+  }
+  return parts
+}
 
 // The user often splits one thought across several texts. Sent as separate turns, the model
 // answers only the last one, so a run of user messages goes in as a single turn.
@@ -23,11 +51,11 @@ export const aiConfigured = () => !!process.env.OPENAI_API_KEY
 // it often doesn't recognize them as already sent and repeats itself.
 // Events (a timer ran out) come from the app, not the user, so they go in as developer turns.
 function toInput(messages: ChatMessage[]): EasyInputMessage[] {
-  const input: (EasyInputMessage & { content: string })[] = []
+  const input: EasyInputMessage[] = []
   messages.forEach((m, i) => {
     const last = input.at(-1)
-    if (m.from === 'user' && last?.role === 'user') last.content += `\n${m.text}`
-    else if (m.from === 'user') input.push({ role: 'user', content: m.text })
+    if (m.from === 'user' && last?.role === 'user') (last.content as ResponseInputContent[]).push(...userParts(m))
+    else if (m.from === 'user') input.push({ role: 'user', content: userParts(m) })
     else if (m.from === 'event') input.push({ role: 'developer', content: m.text })
     else {
       // Another agent message followed, or this is the one the loop is continuing from.
@@ -67,8 +95,7 @@ function validAction(a: any): a is TimerAction {
 }
 
 async function call(ctx: PromptContext, messages: ChatMessage[], signal: AbortSignal) {
-  client ??= new OpenAI()
-  return client.responses.create(
+  return openai().responses.create(
     {
       model: MODEL,
       instructions: systemPrompt(ctx),

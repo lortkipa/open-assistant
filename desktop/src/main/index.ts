@@ -1,6 +1,7 @@
-import { join, resolve } from 'node:path'
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
-import { request } from './api'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { basename, join, resolve } from 'node:path'
+import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
+import { fetchAttachment, request, upload } from './api'
 import { startEvents, stopEvents } from './events'
 import { cancelGoogle, googleAuthorize } from './google'
 
@@ -14,6 +15,10 @@ const offscreen = process.env.OA_OFFSCREEN === '1'
 if (!app.requestSingleInstanceLock()) app.exit(0)
 
 let mainWindow: BrowserWindow | null = null
+
+// Attachments show as <img src="oa-file://<id>">; the main process fetches them with the session token.
+const FILE_SCHEME = 'oa-file'
+protocol.registerSchemesAsPrivileged([{ scheme: FILE_SCHEME, privileges: { standard: true, secure: true, stream: true } }])
 
 function registerProtocol() {
   if (app.isPackaged) app.setAsDefaultProtocolClient(PROTOCOL)
@@ -112,10 +117,32 @@ ipcMain.handle('google:signIn', async () => {
 
 ipcMain.handle('google:cancel', () => cancelGoogle())
 
+ipcMain.handle('api:upload', (_e, name: string, type: string, bytes: ArrayBuffer) => upload(name, type, bytes))
+
+// An attachment's bytes (to edit an image someone already sent), or null if it's gone.
+ipcMain.handle('attachment:read', async (_e, id: string) => {
+  const res = await fetchAttachment(id).catch(() => null)
+  return res?.ok ? res.arrayBuffer() : null
+})
+
+// Opening a document from the chat: save it to a temporary folder and open it in its usual app.
+ipcMain.handle('attachment:open', async (_e, id: string, name: string) => {
+  const res = await fetchAttachment(id).catch(() => null)
+  if (!res?.ok) return false
+  const dir = join(app.getPath('temp'), 'open-assistant', basename(id))
+  await mkdir(dir, { recursive: true })
+  const path = join(dir, basename(name).replace(/^\.+/, '') || 'file')
+  await writeFile(path, Buffer.from(await res.arrayBuffer()))
+  return (await shell.openPath(path)) === ''
+})
+
 // Clicking a notification (a timer ran out) brings the app forward.
 ipcMain.handle('app:focus', () => focusWindow())
 
 app.whenReady().then(() => {
+  protocol.handle(FILE_SCHEME, (req) =>
+    fetchAttachment(new URL(req.url).hostname).catch(() => new Response(null, { status: 502 })),
+  )
   registerProtocol()
   createWindow()
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())

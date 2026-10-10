@@ -1576,8 +1576,8 @@ body.resizing .sidebar-handle::after {
 
 .composer-files {
   display: flex;
-  gap: 8px;
-  padding: 2px 2px 6px;
+  gap: 10px;
+  padding: 8px 8px 6px 2px;
   /* Margin, not padding: the scrollbar sits outside the padding, at the strip's bottom edge. */
   margin-bottom: 6px;
   overflow-x: auto;
@@ -1588,73 +1588,133 @@ body.resizing .sidebar-handle::after {
 .attachment {
   position: relative;
   flex: none;
-  max-width: 220px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 30px 6px 6px;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  cursor: default;
+  width: 112px;
+  height: 112px;
 }
 
-.attachment-thumb,
-.attachment-icon {
-  width: 40px;
-  height: 40px;
-  flex: none;
-  border-radius: 9px;
+.attachment-body,
+.msg-attachment {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-align: left;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: default;
+  transition: border-color 0.15s;
+}
+
+.attachment-body:has(.attachment-thumb),
+.attachment.error .attachment-body,
+.msg-attachment {
+  cursor: pointer;
+}
+
+.attachment-body:hover,
+.msg-attachment:hover {
+  border-color: var(--border-strong);
+}
+
+.attachment-body:focus-visible,
+.msg-attachment:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.attachment.error .attachment-body {
+  border-color: var(--danger);
 }
 
 .attachment-thumb {
+  width: 100%;
+  height: 100%;
+  display: block;
   object-fit: cover;
 }
 
-.attachment-icon {
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-  background: var(--border);
-}
-
-.attachment-meta {
-  min-width: 0;
+.file-card {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  line-height: 1.3;
+  gap: 8px;
+  padding: 10px;
 }
 
-.attachment-name {
-  font-size: 13px;
+.file-card-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--file-color);
+  background: color-mix(in srgb, var(--file-color) 16%, transparent);
+  border-radius: 8px;
+}
+
+.file-card-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
-.attachment-size {
-  font-size: 12px;
+.file-card-meta {
+  margin-top: auto;
+  overflow: hidden;
+  font-size: 11.5px;
   color: var(--faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.attachment-status.error {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--danger);
 }
 
 .attachment-remove {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 20px;
-  height: 20px;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
   display: grid;
   place-items: center;
   padding: 0;
-  color: var(--muted);
-  background: transparent;
-  border: none;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
   border-radius: 50%;
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.attachment:hover .attachment-remove,
+.attachment-remove:focus-visible {
+  opacity: 1;
 }
 
 .attachment-remove:hover {
-  color: var(--text);
   background: var(--border-strong);
 }
 
@@ -1896,3 +1956,199 @@ body.resizing .sidebar-handle::after {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Attachments in the chat */
+
+.msg-user-body {
+  max-width: 75%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.msg-user-body .msg-text {
+  max-width: 100%;
+}
+
+.msg-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Images and files share one height, so a row of them lines up. */
+.msg-attachment {
+  width: 180px;
+  height: 140px;
+}
+
+.msg-attachment.image {
+  width: auto;
+  max-width: 280px;
+}
+
+.msg-attachment .file-card {
+  padding: 12px;
+}
+
+.msg-attachment.image .attachment-thumb {
+  width: auto;
+  min-width: 80px;
+  max-width: 100%;
+}
+
+/* Image viewer and editor */
+
+.image-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.88);
+  animation: fade 0.12s ease-out;
+}
+
+.overlay-btn {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--text);
+  background: rgba(24, 24, 26, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.overlay-btn:hover {
+  background: var(--border-strong);
+}
+
+.overlay-btn:focus-visible,
+.editor-btn:focus-visible,
+.editor-color:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.image-overlay.editor {
+  grid-template-rows: 1fr auto;
+  gap: 14px;
+  padding: 24px 24px 18px;
+}
+
+.editor-stage {
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.editor-canvas-wrap {
+  position: relative;
+  display: flex;
+}
+
+.editor-exit {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+}
+
+.editor-canvas {
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 110px);
+  border-radius: 6px;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.editor-canvas.tool-text {
+  cursor: text;
+}
+
+.editor-text {
+  position: absolute;
+  min-width: 40px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  white-space: pre;
+  background: transparent;
+  border: none;
+  outline: 1px dashed rgba(255, 255, 255, 0.6);
+  resize: none;
+  field-sizing: content;
+}
+
+.editor-toolbar {
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.editor-btn {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.editor-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.editor-btn.active {
+  color: var(--text);
+  background: var(--border-strong);
+}
+
+.editor-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.editor-sep {
+  width: 1px;
+  height: 22px;
+  flex: none;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.editor-color {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin: 0 3px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.editor-color.active {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text);
+}
+

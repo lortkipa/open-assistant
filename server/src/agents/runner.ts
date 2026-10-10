@@ -1,6 +1,7 @@
 import { sql } from '../db.ts'
 import { publish } from '../events.ts'
 import { clock } from './prompt.ts'
+import { forModel } from './attachments.ts'
 import { aiConfigured, nextMessage } from './reply.ts'
 import { insertMessage, loadMessages } from './store.ts'
 import { applyTimerActions, loadTimers, saveTimers, timeLeft, toWire, type Timer } from './timers.ts'
@@ -53,9 +54,15 @@ async function reply(userId: string, agentId: string, signal: AbortSignal) {
     const [messages, timers] = await Promise.all([loadMessages(sql, agentId), loadTimers(sql, agentId)])
     const { timeZone } = agent
     const now = new Date().toLocaleString('en-US', { timeZone, dateStyle: 'full', timeStyle: 'short' })
+    const attachments = await forModel(messages.flatMap((m) => m.attachments ?? []), signal)
     const next = await nextMessage(
       { agentName: agent.name, userName: agent.userName ?? 'the user', email: agent.email, now, timeZone, timers: timers.map(timerState) },
-      messages.map(({ from, text, timers }) => ({ from, text, timers })),
+      messages.map(({ from, text, timers, attachments: attached }) => ({
+        from,
+        text,
+        timers,
+        attachments: attached?.map((a) => attachments.get(a.id)!).filter(Boolean),
+      })),
       signal,
     )
 

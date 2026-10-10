@@ -175,3 +175,56 @@ export const TimerIcon = ({ size }: { size?: number }) => (
     <path d="M12 10v3.5l2 2M10 3h4" />
   </Icon>
 )
+
+// Image viewer and editor.
+
+export const LineIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M5 19 19 5" />
+  </Icon>
+)
+
+export const ArrowIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M5 19 19 5M10 5h9v9" />
+  </Icon>
+)
+
+export const SquareIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <rect x="5" y="5" width="14" height="14" rx="1.5" />
+  </Icon>
+)
+
+export const CircleIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <circle cx="12" cy="12" r="7.5" />
+  </Icon>
+)
+
+export const TextIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M5 6V5h14v1M12 5v14M9 19h6" />
+  </Icon>
+)
+
+export const UndoIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M9 14 4 9l5-5" />
+    <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+  </Icon>
+)
+
+export const RedoIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="m15 14 5-5-5-5" />
+    <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
+  </Icon>
+)
+
+// Arrows pointing in: leave the full-size image.
+export const MinimizeIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" />
+  </Icon>
+)

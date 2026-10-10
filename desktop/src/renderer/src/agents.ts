@@ -12,7 +12,22 @@ export type TimerAction = {
 }
 
 // 'event' is something that happened (a timer ran out), which the agent reads too.
-export type Message = { id: string; from: 'user' | 'agent' | 'event'; text: string; timers?: TimerAction[]; createdAt: string }
+// A file the user sent, stored on the server. Shown as <img src="oa-file://<id>"> (see the main process).
+export type Attachment = { id: string; name: string; type: string; size: number }
+
+export type Message = {
+  id: string
+  from: 'user' | 'agent' | 'event'
+  text: string
+  timers?: TimerAction[]
+  attachments?: Attachment[]
+  createdAt: string
+}
+
+export const attachmentUrl = (id: string) => `oa-file://${id}`
+
+// Images the editor can draw on (and that show as pictures).
+export const isImage = (type: string) => ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/bmp', 'image/avif'].includes(type)
 
 export type Timer = {
   id: string
