@@ -9,6 +9,8 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { SettingsDialog } from '../components/SettingsDialog'
 import { fromWire, isImage, type Agent, type Attachment, type Message, type WireTimer } from '../agents'
 import { UploadIcon } from '../components/icons'
+import { botStyle } from '../components/AgentIcon'
+import { rich, t } from '../i18n'
 
 // 20 keeps every image under Claude's full-size limit (stricter past 20); 25 MB keeps requests sane.
 const MAX_FILES = 20
@@ -190,7 +192,7 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
             setTypingFor(event.agentId, event.on)
             break
           case 'timer_done': {
-            const notification = new Notification(event.agentName, { body: `⏰ ${event.label}: time’s up` })
+            const notification = new Notification(event.agentName, { body: t('timer.done', { label: event.label }) })
             notification.onclick = () => {
               select(event.agentId)
               api.focus()
@@ -262,7 +264,7 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
       const blob = await flatten(draft.originalUrl, draft.original.type, marks)
       file = new File([blob], renamed(draft.original.name, blob.type), { type: blob.type })
       if (file.size > MAX_FILE_SIZE) {
-        setNotice({ text: 'The marked-up image is over 25 MB.' })
+        setNotice({ text: t('composer.markedTooLarge') })
         if (!draft.attachmentId) patchDraft(key, { status: 'error' })
         return
       }
@@ -278,8 +280,8 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
     const room = MAX_FILES - draftsRef.current.length
     const accepted = fitting.slice(0, Math.max(0, room))
     const notes: string[] = []
-    if (fitting.length < added.length) notes.push('Files must be 25 MB or smaller.')
-    if (accepted.length < fitting.length) notes.push(`You can attach up to ${MAX_FILES} files.`)
+    if (fitting.length < added.length) notes.push(t('composer.filesTooLarge'))
+    if (accepted.length < fitting.length) notes.push(t('composer.tooManyFiles', { max: MAX_FILES }))
     setNotice(notes.length ? { text: notes.join(' ') } : null)
     for (const { originalUrl } of added.filter((a) => !accepted.includes(a))) {
       if (originalUrl) URL.revokeObjectURL(originalUrl)
@@ -343,7 +345,7 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
   }
 
   const openDocument = async (attachment: Attachment) => {
-    if (!(await api.openAttachment(attachment.id, attachment.name))) setNotice({ text: `Couldn’t open ${attachment.name}.` })
+    if (!(await api.openAttachment(attachment.id, attachment.name))) setNotice({ text: t('composer.openFailed', { name: attachment.name }) })
   }
 
   const onDragEnter = (e: DragEvent) => {
@@ -373,8 +375,11 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
     if (e.dataTransfer.files.length) addFiles([...e.dataTransfer.files])
   }
 
+  // Your messages and the send button take the open agent's color (the logo's blue with none open), or black/white.
+  const accent = user.accent === 'bot' ? { className: 'app bot-tint', style: botStyle(agent?.shape ?? 'blob') } : { className: 'app accent-neutral' }
+
   return (
-    <div className="app">
+    <div {...accent}>
       <Sidebar
         user={user}
         onSignedOut={onSignedOut}
@@ -407,15 +412,15 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
       )}
       {deleting && (
         <ConfirmDialog
-          title="Delete agent?"
-          confirmLabel="Delete"
+          title={t('agent.delete')}
+          confirmLabel={t('common.delete')}
           onClose={() => setDeletingId(null)}
           onConfirm={() => {
             remove(deleting.id)
             setDeletingId(null)
           }}
         >
-          <strong>{deleting.name}</strong> and its messages will be deleted. This can’t be undone.
+          {rich(t('agent.deleteBody'), { name: <strong>{deleting.name}</strong> })}
         </ConfirmDialog>
       )}
       {creating && (
@@ -447,7 +452,7 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
               if (draft) upload(key, draft.file)
             }}
             notice={notice?.text}
-            placeholder={agent && `Message ${agent.name}`}
+            placeholder={agent && t('composer.placeholderAgent', { name: agent.name })}
             onSubmit={(text) => {
               const sent = draftsRef.current
               setNotice(null)
@@ -464,7 +469,7 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
           <div className="drop-overlay">
             <div className="drop-card">
               <UploadIcon size={28} />
-              <span>Drop files to attach</span>
+              <span>{t('composer.drop')}</span>
             </div>
           </div>
         )}

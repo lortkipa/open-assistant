@@ -63,7 +63,7 @@ auth.post('/email/verify', async (c) => {
 
   await sql`delete from email_codes where email = ${addr}`
   await sql`insert into users (email) values (${addr}) on conflict (email) do nothing`
-  const [user] = await sql<User[]>`select id, email, name, avatar_url from users where email = ${addr}`
+  const [user] = await sql<User[]>`select id, email, name, avatar_url, theme, accent, language, spellcheck from users where email = ${addr}`
   return c.json({ token: await createSession(user.id), user })
 })
 
@@ -101,7 +101,7 @@ auth.post('/google', async (c) => {
       avatar_url = case when users.avatar_url like '/me/avatar/%'
                           or (users.google_sub is null and users.avatar_url is not null)
                         then users.avatar_url else excluded.avatar_url end
-    returning id, email, name, avatar_url`
+    returning id, email, name, avatar_url, theme, accent, language, spellcheck`
   return c.json({ token: await createSession(user.id), user, suggestedName: profile.name })
 })
 

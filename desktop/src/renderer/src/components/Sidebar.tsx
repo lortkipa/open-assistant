@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import type { User } from '../api'
 import type { Agent } from '../agents'
+import { useT } from '../i18n'
 import { AccountMenu } from './AccountMenu'
 import { AgentIcon } from './AgentIcon'
 import { AgentMenu } from './AgentMenu'
@@ -43,6 +44,7 @@ type Props = {
 }
 
 export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew, onUpdate, onEdit, onDelete, onSettings }: Props) {
+  const t = useT()
   const [layout, setLayout] = useState(loadLayout)
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = useCallback(() => setMenuOpen(false), [])
@@ -120,15 +122,15 @@ export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew
       style={{ width: collapsed ? RAIL : width }}
     >
       <div className="sidebar-top">
-        <button className="icon-btn" aria-label="Search" title="Search">
+        <button className="icon-btn" aria-label={t('sidebar.search')} title={t('sidebar.search')}>
           <SearchIcon />
         </button>
-        <button className="icon-btn" aria-label="New agent" title="New agent" onClick={onNew}>
+        <button className="icon-btn" aria-label={t('sidebar.newAgent')} title={t('sidebar.newAgent')} onClick={onNew}>
           <PlusIcon />
         </button>
       </div>
 
-      <nav className="sidebar-body agent-list" aria-label="Agents">
+      <nav className="sidebar-body agent-list" aria-label={t('sidebar.agents')}>
         {sorted.map((agent) => (
           <button
             key={agent.id}
@@ -143,17 +145,17 @@ export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew
           >
             <span className="agent-item-icon">
               <AgentIcon shape={agent.shape} size={28} />
-              {collapsed && agent.unread && <span className="unread-dot" aria-label="Unread" />}
+              {collapsed && agent.unread && <span className="unread-dot" aria-label={t('sidebar.unread')} />}
             </span>
             {!collapsed && (
               <>
                 <span className="agent-name">{agent.name}</span>
                 {agent.pinned && (
-                  <span className="agent-pin" aria-label="Pinned">
+                  <span className="agent-pin" aria-label={t('sidebar.pinned')}>
                     <PinIcon size={14} />
                   </span>
                 )}
-                {agent.unread && <span className="unread-dot" aria-label="Unread" />}
+                {agent.unread && <span className="unread-dot" aria-label={t('sidebar.unread')} />}
               </>
             )}
           </button>
@@ -203,7 +205,7 @@ export function Sidebar({ user, onSignedOut, agents, selectedId, onSelect, onNew
         className="sidebar-handle"
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize sidebar"
+        aria-label={t('sidebar.resize')}
         aria-valuemin={RAIL}
         aria-valuemax={MAX}
         aria-valuenow={collapsed ? RAIL : width}

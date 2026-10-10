@@ -15,4 +15,10 @@ export type DesktopApi = {
   googleSignIn: () => Promise<ApiResult>
   googleCancel: () => Promise<void>
   focus: () => Promise<void>
+  // Theme, spell check and the language of the right-click menu.
+  setPreferences: (prefs: {
+    theme: 'system' | 'light' | 'dark'
+    spellcheck: boolean
+    language: 'en' | 'ka'
+  }) => Promise<void>
 }

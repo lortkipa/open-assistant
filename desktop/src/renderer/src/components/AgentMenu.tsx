@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Agent } from '../agents'
+import { useT } from '../i18n'
 import { PencilIcon, PinIcon, ReadIcon, TrashIcon, UnreadIcon } from './icons'
 
 type Props = {
@@ -17,6 +18,7 @@ type Props = {
 // Right-click menu for an agent in the sidebar. Opens at the pointer, nudged to stay on screen.
 export function AgentMenu({ agent, x, y, onClose, onTogglePin, onToggleUnread, onEdit, onDelete }: Props) {
   const ref = useRef<HTMLDivElement>(null)
+  const t = useT()
   const [pos, setPos] = useState({ left: x, top: y })
 
   useLayoutEffect(() => {
@@ -65,20 +67,20 @@ export function AgentMenu({ agent, x, y, onClose, onTogglePin, onToggleUnread, o
     >
       <button className="menu-item" role="menuitem" onClick={act(onTogglePin)}>
         <PinIcon size={18} />
-        <span>{agent.pinned ? 'Unpin' : 'Pin'}</span>
+        <span>{t(agent.pinned ? 'agentMenu.unpin' : 'agentMenu.pin')}</span>
       </button>
       <button className="menu-item" role="menuitem" onClick={act(onToggleUnread)}>
         {agent.unread ? <ReadIcon size={18} /> : <UnreadIcon size={18} />}
-        <span>{agent.unread ? 'Mark as read' : 'Mark as unread'}</span>
+        <span>{t(agent.unread ? 'agentMenu.markRead' : 'agentMenu.markUnread')}</span>
       </button>
       <button className="menu-item" role="menuitem" onClick={act(onEdit)}>
         <PencilIcon size={18} />
-        <span>Edit</span>
+        <span>{t('agentMenu.edit')}</span>
       </button>
       <div className="menu-sep" />
       <button className="menu-item danger" role="menuitem" onClick={act(onDelete)}>
         <TrashIcon size={18} />
-        <span>Delete</span>
+        <span>{t('common.delete')}</span>
       </button>
     </div>
   )

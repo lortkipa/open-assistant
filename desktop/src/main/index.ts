@@ -1,9 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
-import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeTheme, protocol, shell } from 'electron'
 import { fetchAttachment, fetchAvatar, request, upload, uploadAvatar } from './api'
 import { startEvents, stopEvents } from './events'
 import { cancelGoogle, googleAuthorize } from './google'
+import { attachContextMenu, backgroundColor, loadPreferences, setPreferences, type Preferences } from './preferences'
 
 const PROTOCOL = 'openassistant'
 
@@ -64,7 +65,7 @@ function createWindow() {
     minHeight: 560,
     show: false,
     title: 'Open Assistant',
-    backgroundColor: '#000000',
+    backgroundColor: backgroundColor(),
     autoHideMenuBar: true,
     icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
@@ -79,6 +80,7 @@ function createWindow() {
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
   })
+  attachContextMenu(win.webContents)
   if (!offscreen) win.once('ready-to-show', () => win.show())
   // Links never navigate the app window; they open in the browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -141,6 +143,14 @@ ipcMain.handle('attachment:open', async (_e, id: string, name: string) => {
   return (await shell.openPath(path)) === ''
 })
 
+// Theme, spell check and the right-click menu's language follow the signed-in user's settings.
+ipcMain.handle('app:preferences', (_e, prefs: Preferences) => setPreferences(prefs))
+
+// The window behind the page (seen while resizing) matches the theme.
+nativeTheme.on('updated', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(backgroundColor())
+})
+
 // Clicking a notification (a timer ran out) brings the app forward.
 ipcMain.handle('app:focus', () => focusWindow())
 
@@ -152,6 +162,7 @@ app.whenReady().then(() => {
     fetchAvatar(new URL(req.url).hostname).catch(() => new Response(null, { status: 502 })),
   )
   registerProtocol()
+  loadPreferences()
   createWindow()
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())
 })

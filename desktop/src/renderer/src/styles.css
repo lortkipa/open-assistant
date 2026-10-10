@@ -2,15 +2,22 @@
   --bg: #000000;
   --surface: #0f0f10;
   --surface-hover: #18181a;
+  /* Selected tabs and hovered fields, a step above --surface-hover. */
+  --surface-raised: #1d1d20;
   --border: #262629;
   --border-strong: #38383d;
   --text: #f4f4f5;
+  /* Hovered buttons filled with --text. */
+  --text-strong: #ffffff;
   --muted: #a1a1aa;
   --faint: #71717a;
   --accent: #8b9cff;
   --danger: #f87171;
   --danger-bg: #2a1214;
   --success: #86efac;
+  --stripe: rgba(255, 255, 255, 0.02);
+  --shadow: rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.6);
   --radius: 10px;
   color-scheme: dark;
   /* The OS UI font: each OS picks proper fallbacks for every script from here. */
@@ -23,8 +30,73 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* Light theme. The main process sets the color scheme from Settings (System follows the OS). */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --surface: #f6f6f7;
+    --surface-hover: #ededef;
+    --surface-raised: #e6e6e9;
+    --border: #e4e4e7;
+    --border-strong: #d4d4d8;
+    --text: #18181b;
+    --text-strong: #000000;
+    --muted: #5b5b64;
+    --faint: #8e8e96;
+    --accent: #2f4fe0;
+    --danger: #dc2626;
+    --danger-bg: #fdeeee;
+    --success: #16a34a;
+    --stripe: rgba(0, 0, 0, 0.025);
+    --shadow: rgba(0, 0, 0, 0.14);
+    --scrim: rgba(0, 0, 0, 0.32);
+    color-scheme: light;
+  }
+}
+
+/* The accent setting colors only your messages and the send button (--tint): the open agent's color
+   (its --bot-* set inline, see botStyle), or black on the light theme. On the dark theme "White" keeps
+   the grey bubble, as a white one would glare. Everything else keeps the app's blue --accent. */
+.bot-tint {
+  --tint: var(--bot-dark);
+}
+
+@media (prefers-color-scheme: light) {
+  .bot-tint {
+    --tint: var(--bot-light);
+  }
+}
+
+.app.bot-tint .msg-user .msg-text {
+  color: var(--bg);
+  background: var(--tint);
+  border-color: transparent;
+}
+
+.app.bot-tint .composer-send {
+  background: var(--tint);
+}
+
+.app.bot-tint .composer-send:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tint) 85%, var(--text));
+}
+
+@media (prefers-color-scheme: light) {
+  .app.accent-neutral .msg-user .msg-text {
+    color: var(--bg);
+    background: var(--text);
+    border-color: transparent;
+  }
+}
+
 * {
   box-sizing: border-box;
+}
+
+/* Selected text is always the same blue, in both themes and inside colored message bubbles. */
+::selection {
+  color: #ffffff;
+  background: #3b5bff;
 }
 
 input,
@@ -128,7 +200,7 @@ h1 + .muted {
 
 .field:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(139, 156, 255, 0.18);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .field[aria-invalid='true'] {
@@ -177,11 +249,11 @@ h1 + .muted {
 
 .btn-primary {
   background: var(--text);
-  color: #000000;
+  color: var(--bg);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #ffffff;
+  background: var(--text-strong);
 }
 
 .btn-secondary {
@@ -198,7 +270,7 @@ h1 + .muted {
 .btn-danger {
   background: transparent;
   color: var(--danger);
-  border-color: rgba(248, 113, 113, 0.35);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
 }
 
 .btn-danger:hover:not(:disabled) {
@@ -320,7 +392,7 @@ h1 + .muted {
 
 .code-input input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(139, 156, 255, 0.18);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .code-input input:disabled {
@@ -328,7 +400,7 @@ h1 + .muted {
 }
 
 .code-input.has-error input {
-  border-color: rgba(248, 113, 113, 0.6);
+  border-color: color-mix(in srgb, var(--danger) 60%, transparent);
   animation: shake 0.3s;
 }
 
@@ -353,7 +425,7 @@ h1 + .muted {
 .confirm {
   width: 100%;
   padding: 16px;
-  border: 1px solid rgba(248, 113, 113, 0.3);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
   background: var(--danger-bg);
   border-radius: var(--radius);
 }
@@ -645,7 +717,7 @@ body.resizing * {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 32px var(--shadow);
   animation: menu-in 0.12s ease-out;
 }
 
@@ -1072,6 +1144,13 @@ body.resizing .sidebar-handle::after {
   border-color: var(--accent);
 }
 
+/* The tick takes the background's color, which is what reads on the accent in either theme. */
+@media (prefers-color-scheme: light) {
+  .md .task-list-item input:checked {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  }
+}
+
 .md blockquote {
   padding: 2px 0 2px 14px;
   color: var(--muted);
@@ -1191,7 +1270,7 @@ body.resizing .sidebar-handle::after {
 }
 
 .md tbody tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--stripe);
 }
 
 .md th + th,
@@ -1233,7 +1312,7 @@ body.resizing .sidebar-handle::after {
   clip-path: inset(50%);
 }
 
-/* Syntax highlighting (highlight.js classes), tuned for the black background */
+/* Syntax highlighting (highlight.js classes), tuned for the black background (light theme below) */
 .hljs-comment,
 .hljs-quote {
   color: #6b7280;
@@ -1327,6 +1406,78 @@ body.resizing .sidebar-handle::after {
   text-decoration: underline;
 }
 
+/* The same roles, darker for the white background. */
+@media (prefers-color-scheme: light) {
+  .hljs-comment,
+  .hljs-quote {
+    color: #6e7781;
+  }
+
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-doctag,
+  .hljs-meta .hljs-keyword,
+  .hljs-template-tag,
+  .hljs-name,
+  .hljs-tag,
+  .hljs-selector-pseudo {
+    color: #cf222e;
+  }
+
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-meta .hljs-string,
+  .hljs-char.escape_ {
+    color: #0a3069;
+  }
+
+  .hljs-number,
+  .hljs-literal,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-variable.constant_ {
+    color: #0550ae;
+  }
+
+  .hljs-title,
+  .hljs-title.function_,
+  .hljs-section {
+    color: #8250df;
+  }
+
+  .hljs-title.class_,
+  .hljs-type,
+  .hljs-built_in,
+  .hljs-title.class_.inherited__ {
+    color: #953800;
+  }
+
+  .hljs-attr,
+  .hljs-attribute,
+  .hljs-property,
+  .hljs-selector-attr,
+  .hljs-selector-class,
+  .hljs-selector-id,
+  .hljs-variable,
+  .hljs-template-variable {
+    color: #0550ae;
+  }
+
+  .hljs-meta {
+    color: #8250df;
+  }
+
+  .hljs-addition {
+    color: #116329;
+    background: rgba(17, 99, 41, 0.08);
+  }
+
+  .hljs-deletion {
+    color: #82071e;
+    background: rgba(130, 7, 30, 0.08);
+  }
+}
+
 .msg-user .msg-text {
   max-width: 75%;
   padding: 10px 14px;
@@ -1349,7 +1500,7 @@ body.resizing .sidebar-handle::after {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--scrim);
   pointer-events: none;
   animation: fade 0.12s ease-out;
 }
@@ -1383,7 +1534,7 @@ body.resizing .sidebar-handle::after {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--scrim);
   animation: fade 0.12s ease-out;
 }
 
@@ -1510,7 +1661,7 @@ body.resizing .sidebar-handle::after {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 14px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 16px 40px var(--shadow);
   animation: menu-in 0.12s ease-out;
 }
 
@@ -1543,7 +1694,7 @@ body.resizing .sidebar-handle::after {
 }
 
 .name-field:hover {
-  background: #1d1d20;
+  background: var(--surface-raised);
 }
 
 .name-field:focus {
@@ -1618,7 +1769,7 @@ body.resizing .sidebar-handle::after {
 
 .settings-tab[aria-selected='true'] {
   color: var(--text);
-  background: #1d1d20;
+  background: var(--surface-raised);
 }
 
 .settings-tab:focus-visible {
@@ -1828,6 +1979,145 @@ button.settings-name:disabled {
   margin: 12px 0 0;
   font-size: 13px;
   color: var(--danger);
+}
+
+.settings-content > .settings-error {
+  margin: 0;
+}
+
+/* General: one row per preference, the control on the right (below, when the text needs the room). */
+.settings-rows {
+  padding: 0 16px;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 14px 0;
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border);
+}
+
+.settings-row-text {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.settings-row-text h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-row-text p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.segmented {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.segmented > button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.segmented > button:hover {
+  color: var(--text);
+}
+
+.segmented > button[aria-checked='true'] {
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.segmented > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+/* A few of the characters' colors, for "Bot color". */
+.swatch-bot {
+  background: conic-gradient(#3b5bff 0 25%, #ff5a4f 0 50%, #a6e22e 0 75%, #b06bff 0);
+}
+
+@media (prefers-color-scheme: light) {
+  .swatch-bot {
+    background: conic-gradient(#2f4fe0 0 25%, #d93a2b 0 50%, #4f9a12 0 75%, #7a3fe0 0);
+  }
+}
+
+.swatch-neutral {
+  background: var(--text);
+}
+
+.switch {
+  flex: none;
+  position: relative;
+  width: 40px;
+  height: 24px;
+  padding: 0;
+  background: var(--border-strong);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch > span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+
+.switch[aria-checked='true'] {
+  background: var(--accent);
+}
+
+.switch[aria-checked='true'] > span {
+  transform: translateX(16px);
+  background: var(--bg);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Composer */
@@ -2061,7 +2351,7 @@ button.settings-name:disabled {
   display: grid;
   place-items: center;
   padding: 0;
-  color: #000000;
+  color: var(--bg);
   background: var(--text);
   border: none;
   border-radius: 50%;
@@ -2070,7 +2360,7 @@ button.settings-name:disabled {
 }
 
 .composer-send:hover:not(:disabled) {
-  background: #ffffff;
+  background: var(--text-strong);
 }
 
 .composer-send:active:not(:disabled) {
@@ -2127,8 +2417,8 @@ button.settings-name:disabled {
 }
 
 .timer-done {
-  border-color: rgba(139, 156, 255, 0.5);
-  background: rgba(139, 156, 255, 0.14);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .timer-ring {
@@ -2215,12 +2505,12 @@ button.settings-name:disabled {
 .timer-btn-main {
   border-color: transparent;
   background: var(--text);
-  color: #000000;
+  color: var(--bg);
 }
 
 .timer-btn-main:hover {
-  background: #ffffff;
-  color: #000000;
+  background: var(--text-strong);
+  color: var(--bg);
 }
 
 .timer-btn:focus-visible {

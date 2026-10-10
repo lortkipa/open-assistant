@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AgentIcon, SHAPES, type Shape } from './AgentIcon'
+import { useT } from '../i18n'
 import { Button } from './Button'
 import { PencilIcon } from './icons'
 
@@ -17,6 +18,7 @@ export function NewAgentDialog({ agent, onCreate, onClose }: Props) {
   const [shape, setShape] = useState<Shape>(() => agent?.shape ?? SHAPES[Math.floor(Math.random() * SHAPES.length)])
   const [name, setName] = useState(agent?.name ?? '')
   const [picking, setPicking] = useState(false)
+  const t = useT()
   const pickerRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<HTMLButtonElement>(null)
   const trimmed = name.trim()
@@ -52,7 +54,7 @@ export function NewAgentDialog({ agent, onCreate, onClose }: Props) {
     <div className="dialog-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog" role="dialog" aria-modal="true" aria-labelledby="new-agent-title" onSubmit={submit}>
         <h2 id="new-agent-title" className="dialog-title">
-          {agent ? 'Edit agent' : 'New agent'}
+          {t(agent ? 'agent.edit' : 'agent.new')}
         </h2>
 
         <div className="avatar-area">
@@ -60,7 +62,7 @@ export function NewAgentDialog({ agent, onCreate, onClose }: Props) {
             ref={avatarRef}
             type="button"
             className={`avatar-edit${picking ? ' open' : ''}`}
-            aria-label="Change icon"
+            aria-label={t('agent.changeIcon')}
             aria-expanded={picking}
             onClick={() => setPicking(!picking)}
           >
@@ -72,15 +74,15 @@ export function NewAgentDialog({ agent, onCreate, onClose }: Props) {
           </button>
 
           {picking && (
-            <div className="icon-picker" ref={pickerRef} role="group" aria-label="Icon">
+            <div className="icon-picker" ref={pickerRef} role="group" aria-label={t('agent.icon')}>
               {SHAPES.map((s) => (
                 <button
                   key={s}
                   type="button"
                   className="icon-choice"
                   aria-pressed={s === shape}
-                  aria-label={s}
-                  title={s}
+                  aria-label={t(`shape.${s}`)}
+                  title={t(`shape.${s}`)}
                   onClick={() => {
                     setShape(s)
                     setPicking(false)
@@ -95,8 +97,8 @@ export function NewAgentDialog({ agent, onCreate, onClose }: Props) {
 
         <input
           className="name-field"
-          placeholder="Name your agent"
-          aria-label="Name"
+          placeholder={t('agent.namePlaceholder')}
+          aria-label={t('agent.name')}
           autoFocus
           maxLength={MAX_NAME}
           value={name}
@@ -105,10 +107,10 @@ export function NewAgentDialog({ agent, onCreate, onClose }: Props) {
 
         <div className="dialog-actions">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" disabled={!trimmed}>
-            {agent ? 'Save' : 'Create'}
+            {t(agent ? 'common.save' : 'common.create')}
           </Button>
         </div>
       </form>

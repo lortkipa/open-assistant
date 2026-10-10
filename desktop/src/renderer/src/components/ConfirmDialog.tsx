@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { useT } from '../i18n'
 import { Button } from './Button'
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
 
 // A yes/no question for destructive actions. Escape or a click outside cancels.
 export function ConfirmDialog({ title, children, confirmLabel, onConfirm, onClose }: Props) {
+  const t = useT()
   useEffect(() => {
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -28,7 +30,7 @@ export function ConfirmDialog({ title, children, confirmLabel, onConfirm, onClos
         <p className="dialog-text">{children}</p>
         <div className="dialog-actions">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="button" variant="danger" autoFocus onClick={onConfirm}>
             {confirmLabel}

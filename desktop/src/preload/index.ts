@@ -19,6 +19,7 @@ const api: DesktopApi = {
   googleSignIn: () => ipcRenderer.invoke('google:signIn'),
   googleCancel: () => ipcRenderer.invoke('google:cancel'),
   focus: () => ipcRenderer.invoke('app:focus'),
+  setPreferences: (prefs) => ipcRenderer.invoke('app:preferences', prefs),
 }
 
 contextBridge.exposeInMainWorld('api', api)

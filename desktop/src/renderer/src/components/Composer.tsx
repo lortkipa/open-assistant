@@ -9,6 +9,7 @@ import {
   type MouseEvent,
   type WheelEvent,
 } from 'react'
+import { useT } from '../i18n'
 import { ArrowUpIcon, CloseIcon, FileIcon, PlusIcon } from './icons'
 import type { Mark } from './ImageEditor'
 
@@ -47,8 +48,9 @@ export function Composer({
   onRetryDraft,
   onSubmit,
   notice,
-  placeholder = 'Message Open Assistant',
+  placeholder,
 }: Props) {
+  const t = useT()
   const [text, setText] = useState('')
   // Text sits on its own row above the buttons once it no longer fits on one line beside them.
   const [stacked, setStacked] = useState(false)
@@ -142,8 +144,8 @@ export function Composer({
         <button
           type="button"
           className="icon-btn composer-attach"
-          aria-label="Attach files"
-          title="Attach files"
+          aria-label={t('composer.attach')}
+          title={t('composer.attach')}
           onClick={() => pickerRef.current!.click()}
         >
           <PlusIcon />
@@ -153,7 +155,7 @@ export function Composer({
           ref={inputRef}
           className="composer-input"
           rows={1}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('composer.placeholder')}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
@@ -163,8 +165,8 @@ export function Composer({
         <button
           type="button"
           className="composer-send"
-          aria-label="Send"
-          title={uploaded ? 'Send' : 'Waiting for files to upload'}
+          aria-label={t('composer.send')}
+          title={t(uploaded ? 'composer.send' : 'composer.waiting')}
           disabled={!canSend}
           onClick={submit}
         >
@@ -193,13 +195,20 @@ export function Composer({
 
 // A file's tile: images show themselves, other files their name and type.
 function Attachment({ draft, onOpen, onRetry, onRemove }: { draft: Draft; onOpen: () => void; onRetry: () => void; onRemove: () => void }) {
+  const t = useT()
   const { file, preview, status } = draft
   return (
-    <div className={`attachment ${status}`} title={status === 'error' ? `${file.name} didn’t upload. Click to retry.` : file.name}>
+    <div className={`attachment ${status}`} title={status === 'error' ? t('composer.uploadFailed', { name: file.name }) : file.name}>
       <button
         type="button"
         className="attachment-body"
-        aria-label={status === 'error' ? `Retry uploading ${file.name}` : preview ? `Open ${file.name}` : file.name}
+        aria-label={
+          status === 'error'
+            ? t('composer.retryUpload', { name: file.name })
+            : preview
+              ? t('common.open', { name: file.name })
+              : file.name
+        }
         onClick={status === 'error' ? onRetry : preview ? onOpen : undefined}
       >
         <FilePreview name={file.name} size={file.size} src={preview} />
@@ -208,9 +217,9 @@ function Attachment({ draft, onOpen, onRetry, onRemove }: { draft: Draft; onOpen
             <span className="spinner" />
           </span>
         )}
-        {status === 'error' && <span className="attachment-status error">Retry</span>}
+        {status === 'error' && <span className="attachment-status error">{t('composer.retry')}</span>}
       </button>
-      <button type="button" className="attachment-remove" aria-label={`Remove ${file.name}`} onClick={onRemove}>
+      <button type="button" className="attachment-remove" aria-label={t('composer.remove', { name: file.name })} onClick={onRemove}>
         <CloseIcon size={12} />
       </button>
     </div>

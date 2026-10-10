@@ -1,5 +1,6 @@
 import { useEffect, useReducer } from 'react'
 import { formatClock, timeLeft, type Timer } from '../agents'
+import { useT } from '../i18n'
 import { PauseIcon, PlayIcon, ResetIcon } from './icons'
 
 type Props = {
@@ -14,6 +15,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 // A timer an agent made, counting down in the chat. The user can run it from here too.
 export function TimerCard({ timer, onStart, onStop, onReset }: Props) {
+  const t = useT()
   const running = timer.status === 'running'
   // Re-render while running. The time is read fresh on every render: a tick saved from before a
   // restart would put the new end time more than a full timer away, and the ring would overshoot.
@@ -46,18 +48,18 @@ export function TimerCard({ timer, onStart, onStop, onReset }: Props) {
       <span className="timer-clock">{formatClock(left)}</span>
       <div className="timer-actions">
         {running ? (
-          <button className="timer-btn timer-btn-main" aria-label="Stop" title="Stop" onClick={onStop}>
+          <button className="timer-btn timer-btn-main" aria-label={t('timer.stop')} title={t('timer.stop')} onClick={onStop}>
             <PauseIcon size={16} />
           </button>
         ) : (
           timer.status !== 'done' && (
-            <button className="timer-btn timer-btn-main" aria-label="Start" title="Start" onClick={onStart}>
+            <button className="timer-btn timer-btn-main" aria-label={t('timer.start')} title={t('timer.start')} onClick={onStart}>
               <PlayIcon size={16} />
             </button>
           )
         )}
         {timer.status !== 'reset' && (
-          <button className="timer-btn" aria-label="Reset" title="Reset" onClick={onReset}>
+          <button className="timer-btn" aria-label={t('timer.reset')} title={t('timer.reset')} onClick={onReset}>
             <ResetIcon size={16} />
           </button>
         )}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { attachmentUrl, isImage, type Agent, type Attachment, type Message, type Timer } from '../agents'
+import { useT } from '../i18n'
 import { AgentIcon } from './AgentIcon'
 import { FilePreview } from './Composer'
 import { Markdown } from './Markdown'
@@ -18,6 +19,7 @@ type Props = {
 }
 
 export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer, onOpenAttachment }: Props) {
+  const t = useT()
   // Stable across renders, so finished messages don't re-render when the chat changes.
   const editRef = useRef(onEditMessage)
   editRef.current = onEditMessage
@@ -67,7 +69,7 @@ export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer, 
                           type="button"
                           className={`msg-attachment${isImage(a.type) ? ' image' : ''}`}
                           title={a.name}
-                          aria-label={`Open ${a.name}`}
+                          aria-label={t('common.open', { name: a.name })}
                           onClick={() => onOpenAttachment(a)}
                         >
                           <FilePreview name={a.name} size={a.size} src={isImage(a.type) ? attachmentUrl(a.id) : null} />
@@ -112,7 +114,7 @@ export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer, 
         })}
         {typing && (
           <div className={`msg msg-agent${messages.at(-1)?.from !== 'agent' ? ' first' : ''}`}>
-            <div className="msg-typing" aria-label={`${agent.name} is typing`}>
+            <div className="msg-typing" aria-label={t('chat.typing', { name: agent.name })}>
               <span />
               <span />
               <span />

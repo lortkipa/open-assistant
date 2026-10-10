@@ -27,7 +27,7 @@ export const requireUser = createMiddleware<{ Variables: { user: User; tokenHash
   const [user] = await sql<User[]>`
     update sessions s set last_used_at = now() from users u
     where s.token_hash = ${tokenHash} and u.id = s.user_id
-    returning u.id, u.email, u.name, u.avatar_url`
+    returning u.id, u.email, u.name, u.avatar_url, u.theme, u.accent, u.language, u.spellcheck`
   if (!user) return c.json({ error: 'unauthorized' }, 401)
   c.set('user', user)
   c.set('tokenHash', tokenHash)

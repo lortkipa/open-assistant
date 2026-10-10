@@ -4,6 +4,7 @@ import rehypeHighlight from 'rehype-highlight'
 import rehypeKatex from 'rehype-katex'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
+import { useT } from '../i18n'
 import { CheckIcon, CopyIcon } from './icons'
 
 // Single "$" stays plain text so prices like "$5 or $10" aren't read as math; math goes in "$$…$$".
@@ -21,6 +22,7 @@ const rehypePlugins = [rehypeKatex, [rehypeHighlight, { detect: true, subset: de
 >['rehypePlugins']
 
 function CodeBlock({ node, children }: ComponentProps<'pre'> & { node?: { children: unknown[] } }) {
+  const t = useT()
   const preRef = useRef<HTMLPreElement>(null)
   const [copied, setCopied] = useState(false)
 
@@ -47,7 +49,7 @@ function CodeBlock({ node, children }: ComponentProps<'pre'> & { node?: { childr
         <span>{language ?? 'text'}</span>
         <button className="md-code-copy" onClick={copy}>
           {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-          {copied ? 'Copied' : 'Copy'}
+          {t(copied ? 'common.copied' : 'common.copy')}
         </button>
       </div>
       <pre ref={preRef}>{children}</pre>

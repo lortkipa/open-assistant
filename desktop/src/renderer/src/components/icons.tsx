@@ -26,6 +26,14 @@ export const SearchIcon = ({ size }: { size?: number }) => (
   </Icon>
 )
 
+export const SlidersIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+    <circle cx="15" cy="7" r="2" />
+    <circle cx="9" cy="17" r="2" />
+  </Icon>
+)
+
 export const PlusIcon = ({ size }: { size?: number }) => (
   <Icon size={size}>
     <path d="M12 5v14M5 12h14" />

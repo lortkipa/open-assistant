@@ -11,6 +11,7 @@ import {
   ResetIcon,
   UndoIcon,
 } from './icons'
+import { useT, type Key } from '../i18n'
 
 // Opening an image opens it here, ready to draw on: marks point the agent at something. They're
 // kept as shapes in the image's own pixels, so they stay editable until the message is sent, and get
@@ -23,21 +24,21 @@ export type Mark =
   | { tool: 'line' | 'arrow' | 'rect' | 'ellipse'; color: string; width: number; from: Point; to: Point }
   | { tool: 'text'; color: string; size: number; at: Point; text: string }
 
-const COLORS = [
-  { value: '#ef4444', name: 'Red' },
-  { value: '#3b82f6', name: 'Blue' },
-  { value: '#22c55e', name: 'Green' },
-  { value: '#111111', name: 'Black' },
-  { value: '#ffffff', name: 'White' },
+const COLORS: { value: string; name: Key }[] = [
+  { value: '#ef4444', name: 'editor.red' },
+  { value: '#3b82f6', name: 'editor.blue' },
+  { value: '#22c55e', name: 'editor.green' },
+  { value: '#111111', name: 'editor.black' },
+  { value: '#ffffff', name: 'editor.white' },
 ]
 
-const TOOLS: { tool: Tool; name: string; icon: ReactNode }[] = [
-  { tool: 'pen', name: 'Pen', icon: <PencilIcon size={18} /> },
-  { tool: 'line', name: 'Line', icon: <LineIcon size={18} /> },
-  { tool: 'arrow', name: 'Arrow', icon: <ArrowIcon size={18} /> },
-  { tool: 'rect', name: 'Rectangle', icon: <SquareIcon size={18} /> },
-  { tool: 'ellipse', name: 'Ellipse', icon: <CircleIcon size={18} /> },
-  { tool: 'text', name: 'Text', icon: <TextIcon size={18} /> },
+const TOOLS: { tool: Tool; name: Key; icon: ReactNode }[] = [
+  { tool: 'pen', name: 'editor.pen', icon: <PencilIcon size={18} /> },
+  { tool: 'line', name: 'editor.line', icon: <LineIcon size={18} /> },
+  { tool: 'arrow', name: 'editor.arrow', icon: <ArrowIcon size={18} /> },
+  { tool: 'rect', name: 'editor.rect', icon: <SquareIcon size={18} /> },
+  { tool: 'ellipse', name: 'editor.ellipse', icon: <CircleIcon size={18} /> },
+  { tool: 'text', name: 'editor.text', icon: <TextIcon size={18} /> },
 ]
 
 // Marks look the same on a small screenshot and a large photo.
@@ -120,6 +121,7 @@ type Props = {
 }
 
 export function ImageEditor({ src, name, marks: initial, onClose }: Props) {
+  const t = useT()
   const [img, setImg] = useState<HTMLImageElement | null>(null)
   const [tool, setTool] = useState<Tool>('pen')
   const [color, setColor] = useState(COLORS[0].value)
@@ -313,7 +315,7 @@ export function ImageEditor({ src, name, marks: initial, onClose }: Props) {
                 }}
               />
             )}
-            <button type="button" className="overlay-btn editor-exit" aria-label="Exit" title="Exit (Esc)" onClick={close}>
+            <button type="button" className="overlay-btn editor-exit" aria-label={t('editor.exit')} title={t('editor.exitHint')} onClick={close}>
               <MinimizeIcon size={18} />
             </button>
           </div>
@@ -321,20 +323,20 @@ export function ImageEditor({ src, name, marks: initial, onClose }: Props) {
       </div>
 
       <div className="editor-toolbar" role="toolbar">
-        {TOOLS.map((t) => (
+        {TOOLS.map((item) => (
           <button
-            key={t.tool}
+            key={item.tool}
             type="button"
-            className={`editor-btn${tool === t.tool ? ' active' : ''}`}
-            aria-label={t.name}
-            aria-pressed={tool === t.tool}
-            title={t.name}
+            className={`editor-btn${tool === item.tool ? ' active' : ''}`}
+            aria-label={t(item.name)}
+            aria-pressed={tool === item.tool}
+            title={t(item.name)}
             onClick={() => {
               finishText()
-              setTool(t.tool)
+              setTool(item.tool)
             }}
           >
-            {t.icon}
+            {item.icon}
           </button>
         ))}
         <span className="editor-sep" />
@@ -344,24 +346,24 @@ export function ImageEditor({ src, name, marks: initial, onClose }: Props) {
             type="button"
             className={`editor-color${color === c.value ? ' active' : ''}`}
             style={{ background: c.value }}
-            aria-label={c.name}
+            aria-label={t(c.name)}
             aria-pressed={color === c.value}
-            title={c.name}
+            title={t(c.name)}
             onClick={() => setColor(c.value)}
           />
         ))}
         <span className="editor-sep" />
-        <button type="button" className="editor-btn" aria-label="Undo" title="Undo" disabled={!past.length} onClick={undo}>
+        <button type="button" className="editor-btn" aria-label={t('editor.undo')} title={t('editor.undo')} disabled={!past.length} onClick={undo}>
           <UndoIcon size={18} />
         </button>
-        <button type="button" className="editor-btn" aria-label="Redo" title="Redo" disabled={!future.length} onClick={redo}>
+        <button type="button" className="editor-btn" aria-label={t('editor.redo')} title={t('editor.redo')} disabled={!future.length} onClick={redo}>
           <RedoIcon size={18} />
         </button>
         <button
           type="button"
           className="editor-btn"
-          aria-label="Reset"
-          title="Reset (remove all marks)"
+          aria-label={t('editor.reset')}
+          title={t('editor.resetHint')}
           disabled={!marks.length}
           onClick={() => commit([])}
         >

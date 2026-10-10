@@ -14,14 +14,26 @@ me.use(requireUser)
 
 me.get('/', (c) => c.json({ user: c.get('user') }))
 
+// The name and any of the preferences, each optional.
+const Changes = z.object({
+  name: z.string().trim().min(1).max(50).optional(),
+  theme: z.enum(['system', 'light', 'dark']).optional(),
+  accent: z.enum(['bot', 'neutral']).optional(),
+  language: z.enum(['en', 'ka']).optional(),
+  spellcheck: z.boolean().optional(),
+})
+
 me.patch('/', async (c) => {
-  const body = z
-    .object({ name: z.string().trim().min(1).max(50) })
-    .safeParse(await c.req.json().catch(() => null))
-  if (!body.success) return c.json({ error: 'invalid_name' }, 400)
+  const body = Changes.safeParse(await c.req.json().catch(() => null))
+  if (!body.success) {
+    const nameWrong = body.error.issues.some((issue) => issue.path[0] === 'name')
+    return c.json({ error: nameWrong ? 'invalid_name' : 'invalid_settings' }, 400)
+  }
+  const changes = Object.fromEntries(Object.entries(body.data).filter(([, value]) => value !== undefined))
+  if (!Object.keys(changes).length) return c.json({ user: c.get('user') })
   const [user] = await sql<User[]>`
-    update users set name = ${body.data.name} where id = ${c.get('user').id}
-    returning id, email, name, avatar_url`
+    update users set ${sql(changes)} where id = ${c.get('user').id}
+    returning id, email, name, avatar_url, theme, accent, language, spellcheck`
   return c.json({ user })
 })
 
@@ -39,7 +51,7 @@ me.put('/avatar', async (c) => {
       insert into avatars (user_id, type, data) values (${userId}, ${file.type}, ${data}) returning id`
     const [user] = await tx<User[]>`
       update users set avatar_url = ${`/me/avatar/${avatar.id}`} where id = ${userId}
-      returning id, email, name, avatar_url`
+      returning id, email, name, avatar_url, theme, accent, language, spellcheck`
     return user
   })
   return c.json({ user })

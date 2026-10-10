@@ -12,6 +12,11 @@ export type User = {
   email: string
   name: string | null
   avatarUrl: string | null
+  // Settings → General.
+  theme: 'system' | 'light' | 'dark'
+  accent: 'bot' | 'neutral'
+  language: 'en' | 'ka'
+  spellcheck: boolean
 }
 
 // Either the pool or a transaction.
