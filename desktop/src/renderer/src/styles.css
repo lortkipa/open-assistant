@@ -2417,8 +2417,8 @@ button.settings-name:disabled {
 }
 
 .timer-done {
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--tint, var(--accent)) 50%, transparent);
+  background: color-mix(in srgb, var(--tint, var(--accent)) 14%, transparent);
 }
 
 .timer-ring {
@@ -2438,7 +2438,7 @@ button.settings-name:disabled {
 }
 
 .timer-progress {
-  stroke: var(--accent);
+  stroke: var(--tint, var(--accent));
   stroke-linecap: round;
 }
 
@@ -2474,7 +2474,7 @@ button.settings-name:disabled {
 }
 
 .timer-done .timer-clock {
-  color: var(--accent);
+  color: var(--tint, var(--accent));
 }
 
 .timer-actions {
