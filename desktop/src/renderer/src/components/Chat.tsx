@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
-import { attachmentUrl, isImage, type Agent, type Attachment, type Message, type Timer } from '../agents'
+import { attachmentUrl, isImage, type Agent, type Attachment, type Message, type Reminder, type Timer } from '../agents'
 import { useT } from '../i18n'
 import { AgentIcon } from './AgentIcon'
 import { FilePreview } from './Composer'
 import { Markdown } from './Markdown'
+import { ReminderCard } from './ReminderCard'
 import { TimerCard } from './TimerCard'
 
 export type TimerControl = 'start' | 'stop' | 'reset'
@@ -12,13 +13,15 @@ type Props = {
   agent: Agent
   messages: Message[]
   timers: Timer[]
+  reminders: Reminder[]
   typing: boolean
   onEditMessage: (id: string, text: string) => void
   onTimer: (id: string, control: TimerControl) => void
+  onCancelReminder: (id: string) => void
   onOpenAttachment: (attachment: Attachment) => void
 }
 
-export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer, onOpenAttachment }: Props) {
+export function Chat({ agent, messages, timers, reminders, typing, onEditMessage, onTimer, onCancelReminder, onOpenAttachment }: Props) {
   const t = useT()
   // Stable across renders, so finished messages don't re-render when the chat changes.
   const editRef = useRef(onEditMessage)
@@ -52,7 +55,7 @@ export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer, 
 
       <div className="chat-messages">
         {messages.map((message, i) => {
-          // Events (a timer ran out) are only for the agent to read; the timer itself shows it.
+          // Events (a timer ran out, a reminder came due) are only for the agent to read; the card shows it.
           if (message.from === 'event') return null
           // A new speaker starts a new group, spaced from the one before.
           const previous = messages.findLast((m, j) => j < i && m.from !== 'event')
@@ -82,11 +85,15 @@ export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer, 
               </div>
             )
           }
-          // The timers an agent made show under the message it made them with.
+          // The timers and reminders an agent made show under the message it made them with.
           const created = (message.timers ?? [])
             .filter((a) => a.action === 'create')
             .map((a) => timers.find((t) => t.id === a.timer))
             .filter((t) => t !== undefined)
+          const set = (message.reminders ?? [])
+            .filter((a) => a.action === 'create')
+            .map((a) => reminders.find((r) => r.id === a.reminder))
+            .filter((r) => r !== undefined)
           return (
             <div key={message.id} className={className}>
               <div className="msg-agent-body">
@@ -105,6 +112,13 @@ export function Chat({ agent, messages, timers, typing, onEditMessage, onTimer, 
                         onStop={() => onTimer(timer.id, 'stop')}
                         onReset={() => onTimer(timer.id, 'reset')}
                       />
+                    ))}
+                  </div>
+                )}
+                {set.length > 0 && (
+                  <div className="reminders">
+                    {set.map((reminder) => (
+                      <ReminderCard key={reminder.id} reminder={reminder} onCancel={() => onCancelReminder(reminder.id)} />
                     ))}
                   </div>
                 )}

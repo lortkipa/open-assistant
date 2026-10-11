@@ -4,10 +4,11 @@ import { z } from 'zod'
 import { sql, type User } from '../db.ts'
 import { requireUser } from '../auth.ts'
 import { publish, subscribe, type Event } from '../events.ts'
-import { cancelReply, isReplying, scheduleTimers, startReply } from '../agents/runner.ts'
+import { cancelReply, isReplying, scheduleWake, startReply } from '../agents/runner.ts'
 import { agentState, insertMessage, type AgentRow } from '../agents/store.ts'
 import { deleteOpenAiFiles, MAX_ATTACHMENT_SIZE, MAX_ATTACHMENTS, type AttachmentMeta } from '../agents/attachments.ts'
 import { changeTimer, loadTimers, saveTimers, toWire } from '../agents/timers.ts'
+import { cancelReminder, loadReminders, saveReminders, toWire as reminderToWire } from '../agents/reminders.ts'
 
 type Env = { Variables: { user: User; tokenHash: string } }
 
@@ -31,7 +32,7 @@ async function findAgent(c: Context<Env>) {
   return agent
 }
 
-// Everything: agents in creation order, each with its whole chat, its timers and whether it's typing.
+// Everything: agents in creation order, each with its whole chat, its timers and reminders, and whether it's typing.
 agents.get('/', async (c) => {
   const rows = await sql<AgentRow[]>`
     select id, name, shape, pinned, unread from agents where user_id = ${c.get('user').id} order by created_at, id`
@@ -39,7 +40,7 @@ agents.get('/', async (c) => {
   return c.json({ agents: states.map((agent) => ({ ...agent, typing: isReplying(agent.id) })) })
 })
 
-// Live updates for the app: new messages, typing, timers, and changes made elsewhere.
+// Live updates for the app: new messages, typing, timers, reminders, and changes made elsewhere.
 agents.get('/events', (c) => {
   const userId = c.get('user').id
   return streamSSE(c, async (stream) => {
@@ -127,7 +128,7 @@ agents.delete('/:id', async (c) => {
   await sql`delete from agents where id = ${agent.id}`
   deleteOpenAiFiles(files?.ids ?? [])
   publish(c.get('user').id, { type: 'agent_deleted', id: agent.id })
-  scheduleTimers()
+  scheduleWake()
   return c.json({ ok: true })
 })
 
@@ -152,7 +153,7 @@ agents.post('/:id/messages', async (c) => {
     await sql`update users set time_zone = ${body.data.timeZone} where id = ${user.id}`
   }
   const ids = [...new Set(body.data.attachmentIds)]
-  const message = await sql.begin((tx) => insertMessage(tx, agent.id, 'user', body.data.text, undefined, ids))
+  const message = await sql.begin((tx) => insertMessage(tx, agent.id, 'user', body.data.text, {}, ids))
   const timers = (await loadTimers(sql, agent.id)).map(toWire)
   publish(user.id, { type: 'message', agentId: agent.id, message, timers })
   startReply(user.id, agent.id)
@@ -191,6 +192,36 @@ agents.post('/:id/timers/:timerId', async (c) => {
   })
   if (!timers) return c.json({ error: 'not_found' }, 404)
   publish(c.get('user').id, { type: 'timers', agentId: agent.id, timers })
-  scheduleTimers()
+  scheduleWake()
   return c.json({ timers })
+})
+
+// The user cancels a reminder from its card. The chat gets an event saying so: the agent's own
+// earlier texts still say it's set, and it would go by those otherwise. It reads it next time it replies.
+agents.post('/:id/reminders/:reminderId', async (c) => {
+  const body = await parse(c, z.object({ action: z.literal('cancel') }))
+  if (!body.success) return c.json({ error: 'invalid_request' }, 400)
+  const agent = await findAgent(c)
+  if (!agent) return c.json({ error: 'not_found' }, 404)
+  const reminderId = c.req.param('reminderId')
+  const cancelled = await sql.begin(async (tx) => {
+    await tx`select 1 from agents where id = ${agent.id} for update`
+    const before = await loadReminders(tx, agent.id)
+    const reminder = before.find((r) => r.id === reminderId)
+    if (!reminder) return null
+    const after = before.map((r) => (r === reminder ? cancelReminder(r) : r))
+    await saveReminders(tx, agent.id, before, after)
+    const event =
+      reminder.status === 'pending'
+        ? await insertMessage(tx, agent.id, 'event', `The user cancelled reminder ${reminder.id} (“${reminder.note}”) from its card.`)
+        : null
+    return { reminders: after.map(reminderToWire), event }
+  })
+  if (!cancelled) return c.json({ error: 'not_found' }, 404)
+  const { reminders, event } = cancelled
+  const userId = c.get('user').id
+  if (event) publish(userId, { type: 'message', agentId: agent.id, message: event, reminders })
+  publish(userId, { type: 'reminders', agentId: agent.id, reminders })
+  scheduleWake()
+  return c.json({ reminders })
 })

@@ -7,7 +7,7 @@ import { Chat, type TimerControl } from '../components/Chat'
 import { NewAgentDialog } from '../components/NewAgentDialog'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { SettingsDialog } from '../components/SettingsDialog'
-import { fromWire, isImage, type Agent, type Attachment, type Message, type WireTimer } from '../agents'
+import { fromWire, isImage, type Agent, type Attachment, type Message, type Reminder, type WireTimer } from '../agents'
 import { UploadIcon } from '../components/icons'
 import { botStyle } from '../components/AgentIcon'
 import { rich, t } from '../i18n'
@@ -30,16 +30,17 @@ const renamed = (name: string, type: string) => {
   return `${name.replace(/\.[^.]*$/, '')}.${ext}`
 }
 
-type WireAgent = Omit<Agent, 'timers' | 'messages'> & { messages?: Message[]; timers?: WireTimer[] }
+type WireAgent = Omit<Agent, 'timers' | 'messages' | 'reminders'> & { messages?: Message[]; timers?: WireTimer[]; reminders?: Reminder[] }
 type AgentChanges = Partial<Pick<Agent, 'name' | 'shape' | 'pinned' | 'unread'>>
 
-const fromWireAgent = ({ messages = [], timers = [], ...agent }: WireAgent): Agent => ({
+const fromWireAgent = ({ messages = [], timers = [], reminders = [], ...agent }: WireAgent): Agent => ({
   ...agent,
   messages,
   timers: timers.map(fromWire),
+  reminders,
 })
 
-// Agents, chats and timers live on the server, which runs replies and timers even while the app is
+// Agents, chats, timers and reminders live on the server, which runs replies, timers and reminders even while the app is
 // closed. This screen loads them, follows live updates, and sends the user's actions back.
 type Props = { user: User; onUserChange: (user: User) => void; onSignedOut: () => void }
 
@@ -86,19 +87,29 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
     if (id && agentsRef.current.find((a) => a.id === id)?.unread) update(id, { unread: false })
   }
 
-  const upsert = ({ messages, timers, ...changes }: WireAgent) =>
+  const upsert = ({ messages, timers, reminders, ...changes }: WireAgent) =>
     setAgents((prev) =>
       prev.some((a) => a.id === changes.id)
         ? prev.map((a) => (a.id === changes.id ? { ...a, ...changes } : a))
-        : [...prev, fromWireAgent({ ...changes, messages, timers })],
+        : [...prev, fromWireAgent({ ...changes, messages, timers, reminders })],
     )
 
   // The same message can come back both as a response and as a live update.
-  const addMessage = (id: string, message: Message, timers?: WireTimer[]) =>
+  const addMessage = (id: string, message: Message, timers?: WireTimer[], reminders?: Reminder[]) =>
     patch(id, (a) => ({
       messages: a.messages.some((m) => m.id === message.id) ? a.messages : [...a.messages, message],
       ...(timers && { timers: timers.map(fromWire) }),
+      ...(reminders && { reminders }),
     }))
+
+  // A desktop notification; clicking it opens that chat.
+  const notify = (agentId: string, title: string, body: string) => {
+    const notification = new Notification(title, { body })
+    notification.onclick = () => {
+      select(agentId)
+      api.focus()
+    }
+  }
 
   const removeLocal = (id: string) => {
     setAgents((prev) => prev.filter((a) => a.id !== id))
@@ -152,6 +163,13 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
     patch(id, () => ({ timers: (data.timers as WireTimer[]).map(fromWire) }))
   }
 
+  // The user cancels a reminder from its card. The agent sees it's gone next time it replies.
+  const cancelReminder = async (id: string, reminderId: string) => {
+    const { status, data } = await api.request('POST', `/agents/${id}/reminders/${reminderId}`, { action: 'cancel' })
+    if (status !== 200) return fail(data)
+    patch(id, () => ({ reminders: data.reminders }))
+  }
+
   // Live updates from the server, for as long as this screen is open (signing out closes it).
   useEffect(
     () =>
@@ -174,7 +192,12 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
             removeLocal(event.id)
             break
           case 'message':
-            addMessage(event.agentId, event.message, event.timers)
+            addMessage(event.agentId, event.message, event.timers, event.reminders)
+            // The agent texting about a reminder that came due.
+            if (event.notify) {
+              const name = agentsRef.current.find((a) => a.id === event.agentId)?.name ?? ''
+              notify(event.agentId, name, event.message.text.length > 200 ? `${event.message.text.slice(0, 200)}…` : event.message.text)
+            }
             // The server marks every agent message unread; the open chat reads it at once.
             if (event.message.from !== 'agent') break
             if (selectedRef.current === event.agentId) update(event.agentId, { unread: false })
@@ -191,12 +214,16 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
           case 'typing':
             setTypingFor(event.agentId, event.on)
             break
-          case 'timer_done': {
-            const notification = new Notification(event.agentName, { body: t('timer.done', { label: event.label }) })
-            notification.onclick = () => {
-              select(event.agentId)
-              api.focus()
-            }
+          case 'reminders':
+            patch(event.agentId, () => ({ reminders: event.reminders }))
+            break
+          case 'timer_done':
+            notify(event.agentId, event.agentName, t('timer.done', { label: event.label }))
+            break
+          // A reminder came due but the agent didn't text about it (say, the AI isn't set up).
+          case 'reminder_due': {
+            const name = agentsRef.current.find((a) => a.id === event.agentId)?.name ?? ''
+            notify(event.agentId, name, t('reminder.due', { note: event.note }))
             break
           }
           case 'reply_error':
@@ -434,10 +461,12 @@ export function Home({ user, onUserChange, onSignedOut }: Props) {
               agent={agent}
               messages={agent.messages}
               timers={agent.timers}
+              reminders={agent.reminders}
               typing={typing.has(agent.id)}
               onEditMessage={(messageId, text) => editMessage(agent.id, messageId, text)}
               onOpenAttachment={(a) => (isImage(a.type) ? openSent(a) : openDocument(a))}
               onTimer={(timerId, control) => controlTimer(agent.id, timerId, control)}
+              onCancelReminder={(reminderId) => cancelReminder(agent.id, reminderId)}
             />
           )}
         </div>

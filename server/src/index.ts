@@ -3,15 +3,15 @@ import { Hono, type Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { logger } from 'hono/logger'
 import { migrate } from './migrate.ts'
-import { scheduleTimers } from './agents/runner.ts'
+import { scheduleWake } from './agents/runner.ts'
 import { MAX_ATTACHMENT_SIZE, startSweeping } from './agents/attachments.ts'
 import { agents } from './routes/agents.ts'
 import { auth } from './routes/auth.ts'
 import { MAX_AVATAR_SIZE, me } from './routes/me.ts'
 
 await migrate()
-// Timers that ran out while the server was down finish right away.
-scheduleTimers()
+// Timers and reminders that came due while the server was down go off right away.
+scheduleWake()
 startSweeping()
 
 const app = new Hono()

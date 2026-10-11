@@ -59,6 +59,18 @@ export const ka: Record<Key, string> = {
   'timer.reset': 'განულება',
   'timer.done': '⏰ {label}: დრო ამოიწურა',
 
+  'reminder.today': 'დღეს, {time}',
+  'reminder.tomorrow': 'ხვალ, {time}',
+  'reminder.repeat.daily': 'ყოველდღე',
+  'reminder.repeat.weekdays': 'სამუშაო დღეებში',
+  'reminder.repeat.weekly': 'ყოველკვირა',
+  'reminder.repeat.monthly': 'ყოველთვე',
+  'reminder.repeat.yearly': 'ყოველწლიურად',
+  'reminder.done': 'გაიგზავნა',
+  'reminder.cancelled': 'გაუქმებულია',
+  'reminder.cancel': 'შეხსენების გაუქმება',
+  'reminder.due': '🔔 {note}',
+
   'composer.placeholder': 'მისწერეთ Open Assistant-ს',
   'composer.placeholderAgent': 'მისწერეთ: {name}',
   'composer.attach': 'ფაილების მიმაგრება',

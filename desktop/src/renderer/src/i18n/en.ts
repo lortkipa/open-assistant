@@ -57,6 +57,18 @@ export const en = {
   'timer.reset': 'Reset',
   'timer.done': '⏰ {label}: time’s up',
 
+  'reminder.today': 'Today, {time}',
+  'reminder.tomorrow': 'Tomorrow, {time}',
+  'reminder.repeat.daily': 'Every day',
+  'reminder.repeat.weekdays': 'Weekdays',
+  'reminder.repeat.weekly': 'Every week',
+  'reminder.repeat.monthly': 'Every month',
+  'reminder.repeat.yearly': 'Every year',
+  'reminder.done': 'Sent',
+  'reminder.cancelled': 'Cancelled',
+  'reminder.cancel': 'Cancel reminder',
+  'reminder.due': '🔔 {note}',
+
   'composer.placeholder': 'Message Open Assistant',
   'composer.placeholderAgent': 'Message {name}',
   'composer.attach': 'Attach files',

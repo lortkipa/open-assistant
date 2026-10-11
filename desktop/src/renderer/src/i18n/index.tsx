@@ -27,6 +27,8 @@ export function I18nProvider({ language, children }: { language: Language; child
   return <LanguageContext.Provider value={language}>{children}</LanguageContext.Provider>
 }
 
+export const useLanguage = () => useContext(LanguageContext)
+
 export function useT() {
   const language = useContext(LanguageContext)
   return useCallback((key: Key, vars?: Vars) => translate(language, key, vars), [language])

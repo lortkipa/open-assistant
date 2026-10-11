@@ -1,6 +1,6 @@
 import type { Shape } from './components/AgentIcon'
 
-// Agents, chats and timers live on the server, which also runs replies and timers. The app shows them
+// Agents, chats, timers and reminders live on the server, which also runs replies, timers and reminders. The app shows them
 // and gets live updates (see Home).
 
 // What an agent did to its timers along with a message. A create carries the id the server gave the timer.
@@ -11,7 +11,18 @@ export type TimerAction = {
   seconds: number | null
 }
 
-// 'event' is something that happened (a timer ran out), which the agent reads too.
+export type Repeat = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly'
+
+// What an agent did to its reminders along with a message. `at` is the user's local time.
+export type ReminderAction = {
+  action: 'create' | 'cancel'
+  reminder: string | null
+  at: string | null
+  repeat: Repeat | null
+  note: string | null
+}
+
+// 'event' is something that happened (a timer ran out, a reminder came due), which the agent reads too.
 // A file the user sent, stored on the server. Shown as <img src="oa-file://<id>"> (see the main process).
 export type Attachment = { id: string; name: string; type: string; size: number }
 
@@ -20,6 +31,7 @@ export type Message = {
   from: 'user' | 'agent' | 'event'
   text: string
   timers?: TimerAction[]
+  reminders?: ReminderAction[]
   attachments?: Attachment[]
   createdAt: string
 }
@@ -44,12 +56,22 @@ export type WireTimer = Omit<Timer, 'endsAt'>
 
 export const fromWire = (t: WireTimer): Timer => ({ ...t, endsAt: Date.now() + t.remaining })
 
+// A reminder an agent set. `at` is when it's due next (or was, once done or cancelled), in epoch ms.
+export type Reminder = {
+  id: string
+  note: string
+  repeat: Repeat
+  status: 'pending' | 'done' | 'cancelled'
+  at: number
+}
+
 export type Agent = {
   id: string
   name: string
   shape: Shape
   messages: Message[]
   timers: Timer[]
+  reminders: Reminder[]
   pinned: boolean
   unread: boolean
 }

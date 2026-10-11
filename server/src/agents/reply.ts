@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import type { EasyInputMessage, Response, ResponseInputContent } from 'openai/resources/responses/responses'
 import type { ModelAttachment } from './attachments.ts'
 import { MAX_TIMER_SECONDS, systemPrompt, type PromptContext } from './prompt.ts'
+import { REPEATS, validLocal, type Repeat } from './reminders.ts'
 
 export type TimerAction = {
   action: 'create' | 'start' | 'stop' | 'reset'
@@ -9,14 +10,23 @@ export type TimerAction = {
   label: string | null
   seconds: number | null
 }
-// 'event' is something that happened in the app, like a timer running out.
+// `at` is the user's local time, 'YYYY-MM-DDTHH:MM'. A create carries the id the server gave the reminder.
+export type ReminderAction = {
+  action: 'create' | 'cancel'
+  reminder: string | null
+  at: string | null
+  repeat: Repeat | null
+  note: string | null
+}
+// 'event' is something that happened in the app, like a timer running out or a reminder coming due.
 export type ChatMessage = {
   from: 'user' | 'agent' | 'event'
   text: string
   timers?: TimerAction[]
+  reminders?: ReminderAction[]
   attachments?: ModelAttachment[]
 }
-export type Next = { message: string | null; more: boolean; timers: TimerAction[] }
+export type Next = { message: string | null; more: boolean; timers: TimerAction[]; reminders: ReminderAction[] }
 
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna'
 
@@ -49,7 +59,7 @@ function userParts(m: ChatMessage): ResponseInputContent[] {
 // answers only the last one, so a run of user messages goes in as a single turn.
 // The agent's own texts stay separate, in the JSON shape it replies in: given plain text,
 // it often doesn't recognize them as already sent and repeats itself.
-// Events (a timer ran out) come from the app, not the user, so they go in as developer turns.
+// Events (a timer ran out, a reminder is due) come from the app, not the user, so they go in as developer turns.
 function toInput(messages: ChatMessage[]): EasyInputMessage[] {
   const input: EasyInputMessage[] = []
   messages.forEach((m, i) => {
@@ -61,7 +71,7 @@ function toInput(messages: ChatMessage[]): EasyInputMessage[] {
       // Another agent message followed, or this is the one the loop is continuing from.
       const next = messages[i + 1]
       const more = !next || next.from === 'agent'
-      const content = JSON.stringify({ message: m.text || null, more, timers: m.timers ?? [] })
+      const content = JSON.stringify({ message: m.text || null, more, timers: m.timers ?? [], reminders: m.reminders ?? [] })
       input.push({ role: 'assistant', content, phase: 'final_answer' })
     }
   })
@@ -77,10 +87,11 @@ function parseFinal(response: Response): Next | null {
   try {
     const parsed = JSON.parse(text)
     if (typeof parsed?.more !== 'boolean' || (parsed.message !== null && typeof parsed.message !== 'string')) return null
-    if (!Array.isArray(parsed.timers)) return null
+    if (!Array.isArray(parsed.timers) || !Array.isArray(parsed.reminders)) return null
     const message = parsed.message?.trim() || null
     const timers = parsed.timers.filter(validAction)
-    return { message, more: (message !== null || timers.length > 0) && parsed.more, timers }
+    const reminders = parsed.reminders.filter(validReminderAction)
+    return { message, more: (message !== null || timers.length > 0 || reminders.length > 0) && parsed.more, timers, reminders }
   } catch {
     return null
   }
@@ -92,6 +103,13 @@ function validAction(a: any): a is TimerAction {
     return typeof a.label === 'string' && !!a.label.trim() && Number.isInteger(a.seconds) && a.seconds >= 1 && a.seconds <= MAX_TIMER_SECONDS
   }
   return ['start', 'stop', 'reset'].includes(a?.action) && typeof a.timer === 'string'
+}
+
+function validReminderAction(a: any): a is ReminderAction {
+  if (a?.action === 'create') {
+    return typeof a.at === 'string' && validLocal(a.at) && REPEATS.includes(a.repeat) && typeof a.note === 'string' && !!a.note.trim()
+  }
+  return a?.action === 'cancel' && typeof a.reminder === 'string'
 }
 
 async function call(ctx: PromptContext, messages: ChatMessage[], signal: AbortSignal) {
@@ -126,8 +144,23 @@ async function call(ctx: PromptContext, messages: ChatMessage[], signal: AbortSi
                   additionalProperties: false,
                 },
               },
+              reminders: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    action: { type: 'string', enum: ['create', 'cancel'] },
+                    reminder: { type: ['string', 'null'] },
+                    at: { type: ['string', 'null'] },
+                    repeat: { type: ['string', 'null'], enum: [...REPEATS, null] },
+                    note: { type: ['string', 'null'] },
+                  },
+                  required: ['action', 'reminder', 'at', 'repeat', 'note'],
+                  additionalProperties: false,
+                },
+              },
             },
-            required: ['message', 'more', 'timers'],
+            required: ['message', 'more', 'timers', 'reminders'],
             additionalProperties: false,
           },
         },

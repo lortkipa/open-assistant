@@ -2518,6 +2518,96 @@ button.settings-name:disabled {
   outline-offset: 2px;
 }
 
+/* Reminders an agent set, under its message */
+
+.reminders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(100%, 420px);
+  padding: 6px 6px 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.reminder-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tint, var(--accent)) 16%, transparent);
+  color: var(--tint, var(--accent));
+}
+
+.reminder-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: 4px;
+}
+
+.reminder-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.reminder-when {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.reminder-done .reminder-icon,
+.reminder-cancelled .reminder-icon {
+  background: var(--surface-hover);
+  color: var(--faint);
+}
+
+.reminder-done .reminder-note,
+.reminder-cancelled .reminder-note {
+  color: var(--muted);
+}
+
+.reminder-cancelled .reminder-note {
+  text-decoration: line-through;
+}
+
+.reminder-cancel {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.reminder-cancel:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.reminder-cancel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Attachments in the chat */
 
 .msg-user-body {
