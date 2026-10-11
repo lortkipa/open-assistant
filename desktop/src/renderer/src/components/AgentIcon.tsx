@@ -22,7 +22,7 @@ export const SHAPES = Object.keys(IMAGES) as Shape[]
 // Each character's color as an accent: a lighter tint on the dark theme, a deeper one on the light theme.
 const COLORS: Record<Shape, { dark: string; light: string }> = {
   bean: { dark: '#ff8a80', light: '#d93a2b' },
-  blob: { dark: '#8b9cff', light: '#2f4fe0' },
+  blob: { dark: '#5c9dff', light: '#2f4fe0' },
   clover: { dark: '#7cb8ff', light: '#1f6fd6' },
   crescent: { dark: '#ffb066', light: '#c96a0a' },
   diamond: { dark: '#f5d442', light: '#9a7b00' },

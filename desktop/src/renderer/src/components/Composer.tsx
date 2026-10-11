@@ -234,7 +234,7 @@ const FILE_KINDS: [RegExp, string][] = [
   [/^(zip|tar|gz|tgz|bz2|xz|7z|rar)$/, '#c084fc'],
   [/^(pptx?|odp|key)$/, '#fb923c'],
   [/^(mp3|wav|flac|ogg|m4a|mp4|mov|mkv|webm|avi)$/, '#f472b6'],
-  [/^(ts|tsx|js|jsx|mjs|cjs|py|rb|go|rs|java|kt|swift|c|h|cc|cpp|hpp|cs|php|sh|lua|dart|vue|svelte|html|css|scss)$/, '#8b9cff'],
+  [/^(ts|tsx|js|jsx|mjs|cjs|py|rb|go|rs|java|kt|swift|c|h|cc|cpp|hpp|cs|php|sh|lua|dart|vue|svelte|html|css|scss)$/, '#5c9dff'],
 ]
 
 export function formatSize(bytes: number) {
