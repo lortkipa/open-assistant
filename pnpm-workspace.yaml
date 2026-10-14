@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Expo/React Native needs a flat node_modules.
+nodeLinker: hoisted
+
+# One React for the whole repo, at the version the current Expo SDK supports.
+overrides:
+  react: 19.2.3
+  react-dom: 19.2.3

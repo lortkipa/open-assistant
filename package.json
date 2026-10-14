@@ -1,0 +1,20 @@
+{
+  "name": "open-assistant",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "node scripts/run.ts dev",
+    "build": "node scripts/run.ts build",
+    "typecheck": "tsc && turbo run typecheck"
+  },
+  "devDependencies": {
+    "@clack/prompts": "^1.8.1",
+    "@types/node": "^26.6.5",
+    "turbo": "^2.11.7",
+    "typescript": "^7.0.2"
+  }
+}

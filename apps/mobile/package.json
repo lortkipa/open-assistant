@@ -1,0 +1,25 @@
+{
+  "name": "@open-assistant/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "dev": "expo start",
+    "dev:android": "node scripts/android.js run",
+    "dev:ios": "expo run:ios",
+    "build:android": "node scripts/android.js build",
+    "build:ios": "expo prebuild --platform ios && xcodebuild -workspace ios/OpenAssistant.xcworkspace -scheme OpenAssistant -configuration Release -archivePath dist/OpenAssistant.xcarchive archive",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "expo": "~57.0.28",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "@open-assistant/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  }
+}

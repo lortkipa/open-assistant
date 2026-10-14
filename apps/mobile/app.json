@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Open Assistant",
+    "slug": "open-assistant",
+    "scheme": "openassistant",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.openassistant.app"
+    },
+    "android": {
+      "package": "org.openassistant.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#F2F1EC",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
