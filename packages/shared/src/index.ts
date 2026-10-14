@@ -4,3 +4,6 @@ export type HealthResponse = {
   status: "ok";
   name: typeof APP_NAME;
 };
+
+export * from "./auth.js";
+export * from "./theme.js";
